@@ -29,7 +29,7 @@ def append(source, dest):
     destination.close()
     source.close()
 
-def createLicenseFile(package):
+def createLicenseFiles(package):
     if(package.licenses != None):
         licenseFiles = {}
         i = 0
@@ -75,12 +75,13 @@ def packagesVerified(packagesInLicenses):
 
   return False
 
-def createLicenseFiles(packages):
+def createAllLicenseFiles(packages):
   for package in packages:
-    if not package.ignore:
+    if not package.ignore and package.onTarget:
       try:
-        createLicenseFile(package)
+        createLicenseFiles(package)
         processedPackages.append(package)
+        print 'license file created for package "%s"' % (package.name)
       except IOError, e:
         exitWithError("Unable to copy file. %s" % (e))
     else:
@@ -100,7 +101,7 @@ if not packagesVerified(licenses.packages):
   print "Licenses of some of the package(s) are not correctly verified. Maybe the version changed or the package is new"
   exitWithError("Please update the licenses file to correct: %s/%s.py" % (ownDir, License.licenseRootDir))
 
-createLicenseFiles(licenses.packages)
+createAllLicenseFiles(licenses.packages)
 print packagesToJson(processedPackages)
 
 sys.exit(0)

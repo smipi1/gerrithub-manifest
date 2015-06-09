@@ -328,7 +328,9 @@ update-cae-openwrt-build:
 .PHONY: homekit.clean 
 homekit.clean:
 	$(call stepinfo)
+ifneq "$(wildcard $(QSDK_DIR))" ""
 	$(call cleanHomekitPackages)
+endif
 
 homekit.checkout: $(HOMEKIT_SOURCE_DIR) $(HOMEKIT_SOURCE_DEFINIONS)
 	$(call stepinfo)

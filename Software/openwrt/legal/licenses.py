@@ -10,7 +10,7 @@ packages = [
                     , "argp-standalone-1.3"
                     , [License("GPL-2", None)]
                     , False
-                    , "Not on Target" )
+                    , None )
            , Package( "avahi"
                     , "0.6.31"
                     , "http://avahi.org/"
@@ -31,7 +31,7 @@ packages = [
                     , "binutils-2.22"
                     , [License("<license>", "LICENSE")]
                     , False
-                    , "Not on Target" )
+                    , None )
            , Package( "busybox"
                     , "1.19.4"
                     , "http://www.busybox.net/"
@@ -45,7 +45,7 @@ packages = [
                     , "bzip2-1.0.6"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" )
+                    , None )
            , Package( "chacha20-simple"
                     , "1.0"
                     , "http://chacha20.insanecoding.org/"
@@ -66,7 +66,7 @@ packages = [
                     , "dbus-1.8.8"
                     , [License("<license>", "COPYING")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "dnsmasq-nodhcpv6"
                     , "2.66"
                     , "http://www.thekelleys.org.uk/dnsmasq/"
@@ -94,14 +94,14 @@ packages = [
                     , "elfutils-0.155"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "expat-2.0.1"
                     , "<version>"
                     , "<website>"
                     , "expat-2.0.1"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "firewall"
                     , "2014-03-20"
                     , "https://openwrt.org/"
@@ -122,28 +122,28 @@ packages = [
                     , "gdb-7.5"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "gdbm-1.10"
                     , "<version>"
                     , "<website>"
                     , "gdbm-1.10"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "gettext"
                     , "<version>"
                     , "<website>"
                     , "gettext"
                     , [License("<license>", "LICENSE")]
                     , False 
-                    , "Not on Target" )
+                    , None )
            , Package( "hk_aac"
                     , "<version>"
                     , "<website>"
                     , "hk_aac"
                     , [License("<license>", "LICENSE")]
                     , False
-                    , "CAE, Not on Target" )
+                    , "CAE" )
            , Package( "hk_common_osif"
                     , "1.0.0"
                     , None
@@ -185,14 +185,14 @@ packages = [
                     , "hk_security"
                     , [License("<license>", "LICENSE")]
                     , False
-                    , "CAE, Not on Target" )
+                    , "CAE" )
            , Package( "hk_wac"
                     , "<version>"
                     , "<website>"
                     , "hk_wac"
                     , [License("<license>", "LICENSE")]
                     , False
-                    , "CAE, Not on Target" )
+                    , "CAE" )
            , Package( "hostapd-full"
                     , "2015-01-20"
                     , "https://w1.fi/hostapd/"
@@ -304,14 +304,14 @@ packages = [
                     , "libpcap-1.5.3"
                     , [License("BSD", "LICENSE")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "libtool"
                     , "2.4"
                     , "http://www.gnu.org/software/libtool/libtool.html"
                     , "libtool-2.4"
                     , [License(None, None)]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "libubox"
                     , "2014-03-18"
                     , "http://wiki.openwrt.org/doc/techref/ubox"
@@ -332,14 +332,14 @@ packages = [
                     , "lua-5.1.5"
                     , [License ("MIT", "COPYRIGHT")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "lzo"
                     , "2.06"
                     , "http://www.oberhumer.com/opensource/lzo/"
                     , "lzo-2.06"
                     , [License ("GPL-2", "COPYING")]
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "mtd-utils"
                     , "1.5.0"
                     , "http://www.linux-mtd.infradead.org/"
@@ -360,7 +360,7 @@ packages = [
                     , "ocf-crypto-headers"
                     , []
                     , False 
-                    , "Not on Target" ) 
+                    , None ) 
            , Package( "odhcp6c"
                     , "2014-03-31"
                     , "http://wiki.openwrt.org/doc/techref/odhcp6c"
