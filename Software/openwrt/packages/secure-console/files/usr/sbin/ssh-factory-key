@@ -1,0 +1,215 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting BV
+
+# Constants
+SELF=`basename $0`
+TMP_DIR=/tmp/${SELF}.$$
+AUTH_KEYS_FILE=/etc/dropbear/authorized_keys
+
+# Internal variables
+unset PRINT_HELP
+unset LIST_KEYS
+unset KEY_FILE_TO_REGISTER
+unset KEY_TO_DEREGISTER
+unset RESTORE_KEYS_FROM_UENV
+
+help() {
+	echo "
+${SELF} [OPTIONS] FUNCTION
+
+Hue bridge v2.0 ssh public key management utility
+
+Any one of the following FUNCTIONs can be specified:
+	-h                        Prints this help
+	-l                        Lists trusted public keys that can be used for ssh
+	                          access.
+	-r KEY_FILE_TO_REGISTER   Register and trust the specified ssh public key. Use
+	                          '-' to read the public key from standard input.
+	-d KEY_TO_DEREGISTER      De-register (dont trust) the specified public key.
+	-a                        Automatically restore keys from the U-Boot environment.
+"
+}
+
+log() {
+	echo "$*"
+	logger -p daemon.notice -t ${SELF} "$*"
+}
+
+error() {
+	echo "error: $*" >&2
+	logger -p daemon.error -t ${SELF} "$*"
+}
+
+abort() {
+	error "$*"
+	exit 1
+}
+
+abortAndPrintHelp() {
+	error "$*"
+	help >&2
+	exit 1
+}
+
+listKeys() {
+	if ! [ -s "${AUTH_KEYS_FILE}" ]; then
+		return 0
+	fi
+	awk '/^ssh-rsa/{print $3}' ${AUTH_KEYS_FILE}
+	return $?
+}
+
+syncAuthorizedKeysWithUboot() {
+	fw_setenv authorized_keys ''"`cat ${AUTH_KEYS_FILE}`"''
+}
+
+replaceAuthorizedKeys() {
+	local NEW_FILE=$1
+	if mv ${NEW_FILE} ${AUTH_KEYS_FILE}; then
+		syncAuthorizedKeysWithUboot
+	else
+		rm -f ${NEW_FILE}
+		abort "cannot update ${AUTH_KEYS_FILE}"
+	fi
+}
+
+listAuthorizedKeysExcluding() {
+	local NAME_TO_EXCLUDE=$1
+	local EXCLUDED_NAME
+	if ! [ -s "${AUTH_KEYS_FILE}" ]; then
+		return 1
+	fi
+	while read TYPE KEY NAME; do
+		if [ "${NAME_TO_EXCLUDE}" = "${NAME}" ]; then
+			EXCLUDED_NAME=1
+		else
+			echo ${TYPE} ${KEY} ${NAME}
+		fi
+	done <${AUTH_KEYS_FILE}
+	if [ -n "${EXCLUDED_NAME}" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+registerKeyFile() {
+	local KEY_FILE_TO_REGISTER=$1
+	local NEW_TYPE
+	local NEW_KEY
+	local NEW_NAME
+	local TYPE
+	local KEY
+	local NAME
+	local REPLACEMENT
+	if [ "${KEY_FILE_TO_REGISTER}" == "-" ]; then
+		read NEW_TYPE NEW_KEY NEW_NAME
+	elif [ -f "${KEY_FILE_TO_REGISTER}" ]; then
+		read NEW_TYPE NEW_KEY NEW_NAME <${KEY_FILE_TO_REGISTER}
+	else
+		abort "cannot read rsa key file: ${KEY_FILE_TO_REGISTER}"
+	fi
+	if [ "${NEW_TYPE}" != "ssh-rsa" ] || [ -z "${NEW_KEY}" ] || [ -z "${NEW_NAME}" ]; then
+		abort "not a valid rsa key file: ${KEY_FILE_TO_REGISTER}"
+	fi
+	if listAuthorizedKeysExcluding ${NEW_NAME} >${AUTH_KEYS_FILE}.new; then
+		REPLACEMENT=1
+	fi
+	echo ${NEW_TYPE} ${NEW_KEY} ${NEW_NAME} >>${AUTH_KEYS_FILE}.new
+	replaceAuthorizedKeys ${AUTH_KEYS_FILE}.new
+	if [ -n "${REPLACEMENT}" ]; then
+		echo "replaced: ${NEW_NAME}"
+	else
+		echo "registered: ${NEW_NAME}"
+	fi
+}
+
+deregisterKey() {
+	local KEY_TO_DEREGISTER=$1
+	local REMOVED
+	local TYPE
+	local KEY
+	local NAME
+	if listAuthorizedKeysExcluding ${KEY_TO_DEREGISTER} >${AUTH_KEYS_FILE}.new; then
+		replaceAuthorizedKeys ${AUTH_KEYS_FILE}.new
+		echo "deregistered: ${KEY_TO_DEREGISTER}"
+	else
+		rm -f ${AUTH_KEYS_FILE}.new
+		abort "unknown key: ${KEY_TO_DEREGISTER}"
+	fi
+}
+
+restoreKeysFromUenv() {
+	if ! fw_printenv -n authorized_keys >/dev/null; then
+		echo "warning: no keys to restore"
+		return 0
+	elif ! fw_printenv -n authorized_keys >${AUTH_KEYS_FILE}.new; then
+		rm -f ${AUTH_KEYS_FILE}.new
+		abort "cannot restore keys"
+	else
+		mv ${AUTH_KEYS_FILE}.new ${AUTH_KEYS_FILE}
+		awk '/^ssh-rsa/{print "restored: " $3}' ${AUTH_KEYS_FILE}
+		return 0
+	fi
+}
+
+limitToSingleFunction() {
+	local NEW_FUNCTION=$1
+	if [ -n "${FUNCTION}" ]; then
+		abort "functions cannot be combined: -${NEW_FUNCTION} and -${FUNCTION}"
+	else
+		FUNCTION=${NEW_FUNCTION}
+	fi
+}
+
+# Parse the command-line arguments
+while getopts ":hlr:d:a" OPT; do
+	case "${OPT}" in
+		h)
+			limitToSingleFunction ${OPT}
+			PRINT_HELP=1
+			;;
+		l)
+			limitToSingleFunction ${OPT}
+			LIST_KEYS=1
+			;;
+		r)
+			limitToSingleFunction ${OPT}
+			KEY_FILE_TO_REGISTER=${OPTARG}
+			;;
+		d)
+			limitToSingleFunction ${OPT}
+			KEY_TO_DEREGISTER=${OPTARG}
+			;;
+		a)
+			limitToSingleFunction ${OPT}
+			RESTORE_KEYS_FROM_UENV=1
+			;;
+		:)
+			abortAndPrintHelp "Option -${OPTARG} requires an argument"
+			;;
+		\?)
+			abortAndPrintHelp "Option -${OPTARG} not supported"
+			;;
+	esac
+done
+
+if [ -z "${FUNCTION}" ]; then
+	abortAndPrintHelp "FUNCTION not specified"
+elif [ -n "${PRINT_HELP}" ]; then
+	help
+	exit 0
+elif [ -n "${LIST_KEYS}" ]; then
+	listKeys
+	exit $?
+elif [ -n "${KEY_FILE_TO_REGISTER}" ]; then
+	registerKeyFile ${KEY_FILE_TO_REGISTER}
+	exit $?
+elif [ -n "${KEY_TO_DEREGISTER}" ]; then
+	deregisterKey ${KEY_TO_DEREGISTER}
+	exit $?
+elif [ -n "${RESTORE_KEYS_FROM_UENV}" ]; then
+	restoreKeysFromUenv
+	exit $?
+fi
+

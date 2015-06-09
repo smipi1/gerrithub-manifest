@@ -1,0 +1,4 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+echo "[btn_link,$ACTION]" > /var/hue-ipbridge/button_in

@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+if [ -p $BUTTONPIPE ]; then
+	echo "[btn_factoryreset,$ACTION]" > /var/hue-ipbridge/button_in &
+fi
+
+BUTTONPIPE=/var/hue-ipbridge/button_in
+if [ "$ACTION" == "released" ]; then
+  if [ "$SEEN" -gt "0" ]; then
+    factoryreset.sh
+  fi
+fi
+

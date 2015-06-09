@@ -1,0 +1,43 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+#
+# factoryreset -> increase frcnt in uboot environment
+#
+
+#
+# get environment variable
+#
+getEnv() {
+	local KEY=$1
+	echo `fw_printenv -n ${KEY}`
+}
+
+#
+# Increase frcnt value
+#
+local locfrcnt=`getEnv frcnt`
+locfrcnt=$(expr $locfrcnt + 1)
+fw_setenv frcnt $locfrcnt
+logger "frcnt increased!"
+
+#
+# stop deamons
+# 
+logger "stop deamons"
+/etc/init.d/ipbridge stop
+/etc/init.d/swupdate stop
+# /etc/init.d/homekit stop
+logger "stopped deamons"
+
+#
+# Clear the overlay
+#
+rm -rf /overlay
+sync
+
+#
+# and reboot
+#
+logger "reboot"
+reboot

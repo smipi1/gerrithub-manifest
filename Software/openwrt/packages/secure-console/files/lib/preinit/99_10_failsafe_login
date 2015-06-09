@@ -1,0 +1,10 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+notify_failsafe_shell_disabled() {
+	echo "------------------------------------------------------"
+	echo "Cannot enter failsafe mode: Disabled on this system !!"
+	echo "------------------------------------------------------"
+}
+
+boot_hook_add failsafe notify_failsafe_shell_disabled

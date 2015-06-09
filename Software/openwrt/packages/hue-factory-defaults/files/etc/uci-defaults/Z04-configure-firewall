@@ -1,0 +1,24 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+allowSshLogin() {
+	uci batch <<EOF
+add firewall rule
+set firewall.@rule[-1].name=Allow-SSH
+set firewall.@rule[-1].src=lan
+set firewall.@rule[-1].proto=tcp
+set firewall.@rule[-1].dest_port=22
+set firewall.@rule[-1].target=ACCEPT
+set firewall.@rule[-1].family=ipv4
+commit firewall
+EOF
+	return $?
+}
+
+if fw_printenv -n authorized_keys >/dev/null; then
+	echo "enable ssh access"
+	allowSshLogin
+	fw3 reload	
+fi
+
+exit 0

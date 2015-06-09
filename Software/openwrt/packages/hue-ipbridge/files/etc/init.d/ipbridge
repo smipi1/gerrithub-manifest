@@ -1,0 +1,111 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015 Philips Lighting BV
+
+START=83
+STOP=83
+USE_PROCD=1
+
+# Must be in line with rest of system
+WATCHDOG_DETAILEDREASON_POWER_ON=17
+
+self="ipbridge.init"
+SERVICE_DAEMONIZE=1
+SERVICE_WRITE_PID=1
+SERVICE_PID_FILE=/var/run/ipbridge.pid
+HUE_IPBRIDGE=/usr/sbin/ipbridge
+HUE_IPBRIDGE_VAR=/var/hue-ipbridge
+HUE_IPBRIDGE_PERSISTENT=/home/ipbridge/var
+HUE_IPBRIDGE_RESETREASON=/home/ipbridge/resetreason
+GPIO_DIR=/sys/class/gpio
+HUE_IPBRIDGE_TTY=/dev/ttyUSB0
+ZIGBEE_UPDATER=/usr/sbin/zigbee_soc_updater
+ZIGBEE_UPDATE_FILE=/lib/firmware/ZigBeeBridge-HueV2-SAMR21_8001.sbl
+ZIGBEE_VERSION_FILE=/lib/firmware/version
+# procd respawn settings
+# RESTART_TIMEOUT = time(seconds) before next respawn
+# FAIL_THRESHOLD = time(seconds) in which MAX_FAIL can be reached
+# MAX_FAIL = max number of respawns within FAIL_THRESHOLD.
+RESTART_TIMEOUT=10
+FAIL_THRESHOLD=3600
+MAX_FAIL=6
+
+formatArg() {
+	local OPTION=$1;shift
+	local VALUE=$1;shift
+	echo -n " ${OPTION} ${VALUE}"
+}
+
+
+setResetReason() {
+	local REASON=$1;shift
+	echo "${REASON}" > ${HUE_IPBRIDGE_RESETREASON}
+}
+
+determineResetReason() {
+	local VALUE=`fw_printenv -n resetreason 2>/dev/null`
+	if [ -n "${VALUE}" ]; then
+		setResetReason ${VALUE}
+		fw_setenv ${KEY}
+	else
+		setResetReason ${WATCHDOG_DETAILEDREASON_POWER_ON}
+	fi
+}
+
+formatArgFromUbootEnvVar() {
+	local OPTION=$1;shift
+	local KEY=$1;shift
+	local VALUE=`fw_printenv -n ${KEY}`
+	if [ -n "${VALUE}" ]; then
+		echo -n " ${OPTION} ${VALUE}"
+	fi
+}
+
+log() {
+	echo "$*"
+	logger -p daemon.notice -t ${self} "$*"
+}
+
+error() {
+	echo "error: $*" >&2
+	logger -p daemon.error -t ${self} "$*"
+}
+
+updateZigBeeSocIfNecessary() {
+	log "Comparing ZigbeeSoc version with firmware file"
+	if ${ZIGBEE_UPDATER} -z ${HUE_IPBRIDGE_TTY} -v ${ZIGBEE_VERSION_FILE} -c; then
+		log "Zigbee Soc up to date"
+	else
+		log "Updating Zigbee Soc"
+		if ! ${ZIGBEE_UPDATER} -z ${HUE_IPBRIDGE_TTY} -f ${ZIGBEE_UPDATE_FILE}; then
+			error "Failed updating software"
+		fi
+	fi
+}
+
+getArgumentsFromUbootEnvironment() {
+	formatArg -p ${HUE_IPBRIDGE_PERSISTENT}
+	formatArg -z ${HUE_IPBRIDGE_TTY}
+	formatArgFromUbootEnvVar -e eui64
+	formatArgFromUbootEnvVar -k portal
+	formatArgFromUbootEnvVar -n set12nc
+	formatArgFromUbootEnvVar -c ctn
+	formatArgFromUbootEnvVar -i cid
+	formatArgFromUbootEnvVar -r frcnt
+}
+
+start_service() {
+	mkdir -p ${HUE_IPBRIDGE_VAR}
+	mkdir -p ${HUE_IPBRIDGE_PERSISTENT}
+
+	local ARGS="`getArgumentsFromUbootEnvironment`"
+
+	determineResetReason	
+	
+	updateZigBeeSocIfNecessary
+	
+	procd_open_instance
+	procd_set_param command ${HUE_IPBRIDGE} ${ARGS}
+	procd_set_param respawn $FAIL_THRESHOLD $RESTART_TIMEOUT $MAX_FAIL
+	procd_set_param fail reboot
+	procd_close_instance
+}
