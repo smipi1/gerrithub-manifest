@@ -4,6 +4,7 @@
 
 PRODUCT=BSB002
 
+BUILD_LOG_DIR=/tmp/smartbridge-openwrt-build-logs
 STATE_DIR=.state
 BUILD_DIR=build_dir
 OTAU_BUILD_DIR=$(BUILD_DIR)/otau
@@ -14,11 +15,10 @@ QSDK_DIR=$(QUALCOMM_DIR)/qsdk
 QSDK_CONFIG_DEST=$(QSDK_DIR)/.config
 QSDK_BUILD_DIR=$(QSDK_DIR)/build_dir
 QSDK_BIN_DIR=$(QSDK_DIR)/bin/ar71xx
-QSDK_MIPS_BUILD_DIR=$(QSDK_BUILD_DIR)/target-mips_*_uClibc-0.9.33.2
+QSDK_MIPS_BUILD_DIR=$(wildcard $(QSDK_BUILD_DIR)/target-mips_*_uClibc-*)
 QSDK_HOST_BUILD_DIR=$(QSDK_BUILD_DIR)/host
-QSDK_HOST_UBOOT_VERSION=2013.07-rc1
-QSDK_HOST_UBOOT_BUILD_DIR=$(QSDK_HOST_BUILD_DIR)/u-boot-$(QSDK_HOST_UBOOT_VERSION)
-QSDK_CONFIG_FILE=$(abspath configs/qualcomm_qsdk_openwrt_config)
+QSDK_HOST_UBOOT_BUILD_DIR=$(wildcard $(QSDK_HOST_BUILD_DIR)/u-boot-*)
+QSDK_CONFIG_FILE=configs/qualcomm_qsdk_openwrt_config
 CAE_DIR=cae
 HOMEKIT_SOURCE_DEFINIONS=homekitSource.mk
 HOMEKIT_SOURCE_DIR=$(CAE_DIR)/homekit
@@ -126,6 +126,9 @@ define done
 	$(call printInColor,$(STEP_INFO_COLOR),Done: $@)
 endef
 
+# Hides the output in a log file, but shows the output if an error occurs
+quietUnlessErrors=2>&1 >$(BUILD_LOG_DIR)/$(1) || (cat $(BUILD_LOG_DIR)/$(1); exit 1)
+
 # Automatic make target (first target defined is called if no make rule is specified)
 .PHONY : all
 all: qsdk.compile otauImage developmentImages factoryImages
@@ -176,19 +179,15 @@ help:
 	@echo ""
 	@echo "Run-once make rules (Will not be repeated once completed):"
 	@echo "	qsdk.checkout                 Checks out the QSDK."
-	@echo "	qsdk.configure                Configures the QSDK."
 	@echo "	qsdk.update-feeds             Configures the QSDK feeds."
 	@echo ""
 	@echo "Redo run-once make rules:"
 	@echo "	qsdk.checkout/force           Update the QSDK to the latest sources NOW."
-	@echo "	qsdk.configure/force          Reconfigure the QSDK NOW."
 	@echo "	qsdk.update-feeds/force       Update the QSDK feeds NOW."
 	@echo ""
 	@echo "Purge run-once make rules (Expect a redo of the run-once rule on the next make):"
 	@echo "	qsdk.checkout/purge           Force a subsequent redo of 'qsdk.checkout'"
-	@echo "	qsdk.configure/purge          Force a subsequent redo of 'qsdk.configure'"
 	@echo "	qsdk.update-feeds/purge       Force a subsequent redo of 'qsdk.update-feeds'"
-	@echo ""
 	@echo "	qsdk.checkout/force           Forces a re-checkout of the qsdk sources"
 	@echo ""
 	@echo "Homekit tools:"
@@ -212,12 +211,15 @@ help:
 force: qsdk.compile/purge $(foreach package,$(HUE_PACKAGES),package/$(package)/purge) all
 
 $(RELEASE_DIR):
-	@mkdir -p $(RELEASE_DIR)
+	@mkdir -p $@
+
+$(BUILD_LOG_DIR):
+	@mkdir -p $@
 
 # Creates the U-Boot 
-$(MKENVIMAGE):
-	@echo Within $(QSDK_HOST_UBOOT_BUILD_DIR): make tools-all
-	@$(MAKE) --no-print-directory -C $(QSDK_HOST_UBOOT_BUILD_DIR) tools-all
+$(MKENVIMAGE): $(BUILD_LOG_DIR)
+	@$(call printInColor,$(STEP_INFO_COLOR),Making $(notdir $@))
+	@$(MAKE) -C $(QSDK_HOST_UBOOT_BUILD_DIR) tools-all $(call quietUnlessErrors,$(notdir $@))
 
 .SECONDEXPANSION:
 $(RELEASE_DIR)/bsb002/bsb002_uboot_and_environment.bin: $$(@D)/bsb002_uboot.bin $$(@D)/bsb002_uboot_environment.bin
@@ -318,12 +320,15 @@ qsdk.checkout: $(QSDK_SOURCE_DEFINIONS)
 	$(call done)
 
 define cleanHomekitPackages
-	-@$(MAKE) -C $(QSDK_DIR) $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean)
+	$(call printInColor,$(STEP_INFO_COLOR),Making $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean))
+	-@$(MAKE) -C $(QSDK_DIR) $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean) $(call quietUnlessErrors,cleanHomekitPackages)
 endef
 
 define syncQsdkConfig
-	@cp -a $(QSDK_CONFIG_FILE) $(QSDK_CONFIG_DEST)
-	@$(MAKE) -C $(QSDK_DIR) defconfig
+	$(call printInColor,$(STEP_INFO_COLOR),Using $(QSDK_CONFIG_FILE))
+	@cp $(QSDK_CONFIG_FILE) $(QSDK_CONFIG_DEST)
+	@mkdir -p $(BUILD_LOG_DIR)
+	@$(MAKE) -C $(QSDK_DIR) defconfig $(call quietUnlessErrors,defconfig)
 endef
 
 .PHONY: update-cae-openwrt-build
@@ -347,18 +352,12 @@ homekit.checkout: $(HOMEKIT_SOURCE_DIR) $(HOMEKIT_SOURCE_DEFINIONS)
 qsdk.update-feeds: $(QSDK_CONFIG_FILE) qsdk.checkout homekit.checkout
 	$(call stepinfo)
 	$(call syncQsdkConfig)
-	@$(MAKE) -C $(QSDK_DIR) package/symlinks
-	$(call done)
-
-# Configure the QSDK
-qsdk.configure: $(QSDK_CONFIG_FILE) qsdk.update-feeds
-	$(call stepinfo)
-	$(call syncQsdkConfig)
+	@$(MAKE) -C $(QSDK_DIR) package/symlinks $(call quietUnlessErrors,$@)
 	$(call done)
 
 # Compile the QSDK
 .PHONY : qsdk.compile
-qsdk.compile: qsdk.configure qsdk/world
+qsdk.compile: qsdk.update-feeds qsdk/world
 	$(call stepinfo)
 
 .PHONY : $(GENERIC_UPLOAD_TARGETS)
@@ -417,7 +416,7 @@ target/%: qsdk/target/%
 
 # Execute a QSDK make rule
 .PHONY : qsdk/menuconfig 
-qsdk/menuconfig: qsdk.checkout qsdk.configure/force
+qsdk/menuconfig: qsdk.checkout
 	$(call stepinfo)
 	@echo Within $(QSDK_DIR): make $*
 	@$(MAKE) --no-print-directory -C $(QSDK_DIR) $(notdir $@)
