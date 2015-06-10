@@ -16,6 +16,7 @@ COMMIT_MESSAGE_PATH=${DEST_DIR}/.git/COMMIT_EDITMSG
 ADDITIONAL_SRC_FILES="
 	Software/zigbee/samr21/ZigBeeBridge-HueV2-SAMR21.releaseinfo
 	Software/bridge/tools/make_firmware_image/create_fw2.py
+	Software/bridge/tools/make_firmware_image/create_rsa_signature.py
 	Software/bridge/tools/make_firmware_image/certs/RSA_dev_01.pem
 "
 
