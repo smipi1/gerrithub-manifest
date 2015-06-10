@@ -11,6 +11,7 @@ RELEASE_DIR=release
 QUALCOMM_DIR=qualcomm
 QSDK_SOURCE_DEFINIONS=qsdkSource.mk
 QSDK_DIR=$(QUALCOMM_DIR)/qsdk
+QSDK_CONFIG_DEST=$(QSDK_DIR)/.config
 QSDK_BUILD_DIR=$(QSDK_DIR)/build_dir
 QSDK_BIN_DIR=$(QSDK_DIR)/bin/ar71xx
 QSDK_MIPS_BUILD_DIR=$(QSDK_BUILD_DIR)/target-mips_*_uClibc-0.9.33.2
@@ -320,6 +321,11 @@ define cleanHomekitPackages
 	-@$(MAKE) -C $(QSDK_DIR) $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean)
 endef
 
+define syncQsdkConfig
+	@cp -a $(QSDK_CONFIG_FILE) $(QSDK_CONFIG_DEST)
+	@$(MAKE) -C $(QSDK_DIR) defconfig
+endef
+
 .PHONY: update-cae-openwrt-build
 update-cae-openwrt-build:
 	$(call stepinfo)
@@ -328,12 +334,11 @@ update-cae-openwrt-build:
 .PHONY: homekit.clean 
 homekit.clean:
 	$(call stepinfo)
-ifneq "$(wildcard $(QSDK_DIR))" ""
 	$(call cleanHomekitPackages)
-endif
 
 homekit.checkout: $(HOMEKIT_SOURCE_DIR) $(HOMEKIT_SOURCE_DEFINIONS)
 	$(call stepinfo)
+	$(call syncQsdkConfig)
 	$(call cleanHomekitPackages)
 	@cd $< && git fetch --all && git fetch --tags && git checkout -q $(HOMEKIT_RELEASE)
 	$(call done)
@@ -341,14 +346,14 @@ homekit.checkout: $(HOMEKIT_SOURCE_DIR) $(HOMEKIT_SOURCE_DEFINIONS)
 # Update the QSDK feeds
 qsdk.update-feeds: $(QSDK_CONFIG_FILE) qsdk.checkout homekit.checkout
 	$(call stepinfo)
-	@$(MAKE) -C $(QSDK_DIR) defconfig package/symlinks
+	$(call syncQsdkConfig)
+	@$(MAKE) -C $(QSDK_DIR) package/symlinks
 	$(call done)
 
 # Configure the QSDK
 qsdk.configure: $(QSDK_CONFIG_FILE) qsdk.update-feeds
 	$(call stepinfo)
-	@cp -a $< $(QSDK_DIR)/.config
-	@$(MAKE) -C $(QSDK_DIR) defconfig  
+	$(call syncQsdkConfig)
 	$(call done)
 
 # Compile the QSDK
