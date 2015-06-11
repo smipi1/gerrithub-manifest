@@ -1,4 +1,11 @@
 #!/bin/sh
+# 
+# How to use:
+#   To list all packages that install things in the rootfs:
+#     ./tool/listPakagesThatInstalledSomethingToRoot.sh
+#   Specific information about what a package installs can be read with:
+#     ./tool/listPakagesThatInstalledSomethingToRoot.sh <package_name>
+#     <package_name> does not have to have the full package name. The first few chars is sufficient.
 
 TOOLS_DIR=`readlink -e $(dirname $0)`
 BUILD_DIR=`readlink -e ${TOOLS_DIR}/../qualcomm/qsdk/build_dir/target-*/`
@@ -23,7 +30,17 @@ listAllApplicableFiles() {
 }
 
 rootDirName() {
-	sed 's/\/.*//g'
+	grep -v '^'`basename ${ROOT_DIR}`'' | if [ -n "${PACKAGE}" ]; then
+		grep '^'${PACKAGE}''
+	else
+		awk -F '/' '
+			// {
+				print $1
+			}
+			/^linux-ar71xx_generic\// {
+				print $1 "/" $2
+			}'
+	fi
 }
 
 sortAndShowUniqueValues() {
@@ -51,6 +68,8 @@ listPackagesThatContainFiles() {
 	find * ${FIND_ARGS} | rootDirName | sortAndShowUniqueValues
 	cd - >/dev/null
 }
+
+PACKAGE=$1
 
 listAllApplicableFiles | listPackagesThatContainFiles
 

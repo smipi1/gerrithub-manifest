@@ -41,7 +41,7 @@ packages = [
                     , None ) 
            , Package( "bzip2"
                     , "1.0.6"
-                    , "<website>"
+                    , "http://www.bzip.org/"
                     , "bzip2-1.0.6"
                     , [License("<license>", "LICENSE")]
                     , False 
@@ -62,7 +62,7 @@ packages = [
                     , None )
            , Package( "dbus"
                     , "1.8.8"
-                    , "<website>"
+                    , "http://dbus.freedesktop.org"
                     , "dbus-1.8.8"
                     , [License("<license>", "COPYING")]
                     , False 
@@ -90,14 +90,14 @@ packages = [
                     , None )
            , Package( "elfutils-0.155"
                     , "<version>"
-                    , "<website>"
+                    , "https://fedorahosted.org/elfutils/"
                     , "elfutils-0.155"
                     , [License("<license>", "LICENSE")]
                     , False 
                     , None ) 
-           , Package( "expat-2.0.1"
-                    , "<version>"
-                    , "<website>"
+           , Package( "expat"
+                    , "2.0.1"
+                    , "http://www.libexpat.org/"
                     , "expat-2.0.1"
                     , [License("<license>", "LICENSE")]
                     , False 
@@ -116,16 +116,16 @@ packages = [
                     , [License("LGPL-2.1", None)]
                     , True 
                     , None ) 
-           , Package( "gdb-7.5"
-                    , "<version>"
-                    , "<website>"
+           , Package( "gdb"
+                    , "7.5"
+                    , "http://www.gnu.org/software/gdb/"
                     , "gdb-7.5"
                     , [License("<license>", "LICENSE")]
                     , False 
                     , None ) 
-           , Package( "gdbm-1.10"
-                    , "<version>"
-                    , "<website>"
+           , Package( "gdbm"
+                    , "1.10"
+                    , "http://www.gnu.org/software/gdbm"
                     , "gdbm-1.10"
                     , [License("<license>", "LICENSE")]
                     , False 
@@ -225,7 +225,7 @@ packages = [
                     , "2013-12-15"
                     , "http://www.lm-sensors.org/wiki/I2CTools"
                     , "i2c-tools-2013-12-15"
-                    , [License("LGPL-2.1", "COPYING.LGPL")]
+                    , [License("GPL-2", "COPYING"), License("LGPL-2.1", "COPYING.LGPL")]
                     , True 
                     , None ) 
            , Package( "iw"
@@ -393,14 +393,14 @@ packages = [
                     , "1.0"
                     , "http://cr.yp.to/mac.html"
                     , "poly1305-donna-1.0"
-                    , [License("MIT", "README.md"), License("PD", "README.md")]
+                    , [License("PD", None)]
                     , True
                     , None )
            , Package( "ppp-default"
                     , "2.4.5"
                     , None
                     , "ppp-default/ppp-2.4.5"
-                    , [License("BSD", "README")]
+                    , [License("BSD", None), License("PD", None), License("GPL-2", None), License("LGPL-2.1", None)]
                     , True 
                     , None ) 
            , Package( "procd"
@@ -413,8 +413,8 @@ packages = [
            , Package( "qca-legacy-uboot"
                     , None
                     , "http://www.denx.de/wiki/U-Boot/WebHome"
-                    , "qca-legacy-uboot/bsb002"
-                    , [License("GPL-2.0+", "COPYING")]
+                    , "qca-legacy-uboot"
+                    , [License("GPL-2.0+", "/bsb002/COPYING")]
                     , True 
                     , None ) 
            , Package( "readline"
@@ -441,15 +441,15 @@ packages = [
            , Package( "srp"
                     , "2.1.1"
                     , "http://srp.stanford.edu/"
-                    , "srp-2.1.2/docs"
-                    , [License("BSD", "LICENSE")]
+                    , "srp-2.1.2"
+                    , [License("BSD", "/docs/LICENSE")]
                     , True
                     , None )
-           , Package( "sysfsutils-2.1.0"
+           , Package( "sysfsutils"
                     , "2.1.0"
                     , "http://linux-diag.sourceforge.net/Sysfsutils.html"
                     , "sysfsutils-2.1.0"
-                    , [License("GPL-2.0", "COPYING")]
+                    , [License("GPL-2.0", "/cmd/GPL"), License("LGPL-2.1", "/lib/LGPL")]
                     , True 
                     , None ) 
            , Package( "tcpdump-full"
@@ -482,7 +482,7 @@ packages = [
                     , "TODO" ) 
            , Package( "u-boot"
                     , "2013.10"
-                    , "<website>"
+                    , "http://www.denx.de/wiki/U-Boot"
                     , "u-boot-2013.10/Licenses"
                     , [ License("BSD-2", "bsd-2-clause.txt"),
                         License("BSD-3", "bsd-3-clause.txt"),
@@ -516,7 +516,7 @@ packages = [
                     , None ) 
            , Package( "util-linux"
                     , "2.24.1"
-                    , "<website>"
+                    , "http://freecode.com/projects/util-linux"
                     , "util-linux-2.24.1"
                     , [License("GPL-2.0", "COPYING"), License("GPL-2.0", "COPYING")]
                     , True 

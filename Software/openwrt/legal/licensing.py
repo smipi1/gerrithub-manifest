@@ -25,29 +25,30 @@ def append(source, dest):
     source = open(source, 'r')
     destination = open(dest, 'a')
     shutil.copyfileobj(source, destination)
-    destination.write('\n');
+    destination.write('\n------------------------------------------------------------------------------\n');
     destination.close()
     source.close()
 
 def createLicenseFiles(package):
-    if(package.licenses != None):
-        licenseFiles = {}
-        i = 0
-        for license in package.licenses:
-            if not license.licenseFile:
-                if license.licenseType in License.standardLicenses:
-                    source = License.standardLicenses[license.licenseType]
-                else:
-                    source = "specificLicenses/" + package.name + '.txt'
+    if( (package.licenses == None) or (package.licenses == []) ):
+        exitWithError("No licenses found for package: %s" % (package.name))
+    
+    licenseFiles = {}
+    i = 0
+    for license in package.licenses:
+        if not license.licenseFile:
+            if license.licenseType in License.standardLicenses:
+                source = License.standardLicenses[license.licenseType]
             else:
-                source = "%s/%s" % (package.path(), license.licenseFile)
+                source = "specificLicenses/" + package.name + '.txt'
+        else:
+            source = "%s/%s" % (package.path(), license.licenseFile)
 
-            licenseFiles[source] = ( i, license.filePath(package) )
-            i = i + 1
-        
-        for src, item in sorted(licenseFiles.iteritems(), key=itemgetter(0)):
-            append(src , item[1])
-
+        licenseFiles[source] = ( i, license.filePath(package) )
+        i = i + 1
+    
+    for src, item in sorted(licenseFiles.iteritems(), key=itemgetter(0)):
+        append(src , item[1])
 
 def currentUsedPackages(packagesDirectory):
   usedPackages = [name for name in os.listdir(packagesDirectory)
@@ -77,15 +78,16 @@ def packagesVerified(packagesInLicenses):
 
 def createAllLicenseFiles(packages):
   for package in packages:
-    if not package.ignore and package.onTarget:
-      try:
-        createLicenseFiles(package)
-        processedPackages.append(package)
-        print 'license file created for package "%s"' % (package.name)
-      except IOError, e:
-        exitWithError("Unable to copy file. %s" % (e))
-    else:
-        print 'package "%s" is ignored because: %s' % (package.name, package.ignore)
+    if package.onTarget:
+        if not package.ignore and package.onTarget:
+          try:
+            createLicenseFiles(package)
+            processedPackages.append(package)
+            print 'license file created for package "%s"' % (package.name)
+          except IOError, e:
+            exitWithError("Unable to copy file. %s" % (e))
+        else:
+            print 'package "%s" is ignored because: %s' % (package.name, package.ignore)
 
 def packagesToJson(aPackages):
   """transforms package List of Package to JSON"""

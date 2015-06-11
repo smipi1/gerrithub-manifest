@@ -15,9 +15,9 @@ QSDK_DIR=$(QUALCOMM_DIR)/qsdk
 QSDK_CONFIG_DEST=$(QSDK_DIR)/.config
 QSDK_BUILD_DIR=$(QSDK_DIR)/build_dir
 QSDK_BIN_DIR=$(QSDK_DIR)/bin/ar71xx
-QSDK_MIPS_BUILD_DIR=$(wildcard $(QSDK_BUILD_DIR)/target-mips_*_uClibc-*)
+QSDK_MIPS_BUILD_DIR=$(QSDK_BUILD_DIR)/target-mips_*_uClibc-*
 QSDK_HOST_BUILD_DIR=$(QSDK_BUILD_DIR)/host
-QSDK_HOST_UBOOT_BUILD_DIR=$(wildcard $(QSDK_HOST_BUILD_DIR)/u-boot-*)
+QSDK_HOST_UBOOT_BUILD_DIR=$(QSDK_HOST_BUILD_DIR)/u-boot-*
 QSDK_CONFIG_FILE=configs/qualcomm_qsdk_openwrt_config
 CAE_DIR=cae
 HOMEKIT_SOURCE_DEFINIONS=homekitSource.mk
@@ -320,8 +320,8 @@ qsdk.checkout: $(QSDK_SOURCE_DEFINIONS)
 	$(call done)
 
 define cleanHomekitPackages
-	$(call printInColor,$(STEP_INFO_COLOR),Making $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean))
-	-@$(MAKE) -C $(QSDK_DIR) $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/hk_*)),package/$(package)/clean) $(call quietUnlessErrors,cleanHomekitPackages)
+	$(call printInColor,$(STEP_INFO_COLOR),Making $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/*)),package/$(package)/clean))
+	-@$(MAKE) -C $(QSDK_DIR) $(foreach package,$(notdir $(wildcard $(HOMEKIT_SOURCE_DIR)/package/*)),package/$(package)/clean) $(call quietUnlessErrors,cleanHomekitPackages)
 endef
 
 define syncQsdkConfig
