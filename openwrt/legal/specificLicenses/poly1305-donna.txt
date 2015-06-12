@@ -1,0 +1,5 @@
+/*
+	poly1305 implementation using 8 bit * 8 bit = 16 bit multiplication and 32 bit addition
+
+	based on the public domain reference version in supercop by djb
+*/
