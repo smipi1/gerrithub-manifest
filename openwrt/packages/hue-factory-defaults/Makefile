@@ -13,6 +13,7 @@ define Package/hue-factory-defaults
   SECTION:=utils
   CATEGORY:=Hue
   TITLE:=Hue bridge factory defaults
+  DEPENDS:=+base-files +uboot-envtools +hk_hap +hk_mdns
 endef
 
 define Package/hue-factory-defaults/description
@@ -27,10 +28,8 @@ endef
 
 define Package/hue-factory-defaults/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/Z01-update-factory-reset-counter $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/Z02-setup-networking-defaults $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/Z03-configure-homekit $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/Z04-configure-firewall $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/update-factory-reset-counter $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/configure-homekit $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_BIN) ./files/etc/config/firewall $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
@@ -39,6 +38,14 @@ define Package/hue-factory-defaults/install
 	$(INSTALL_BIN) ./files/usr/sbin/factoryreset.sh $(1)/usr/sbin
 	$(INSTALL_BIN) ./files/usr/sbin/factoryreset_daemon $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/home/homekit/var
+
+	# Install the configs to ROM (functionally replace what the UCI default scripts would otherwise have done after a factory reset)
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_BIN) ./files/etc/fw_env.config $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_BIN) ./files/etc/config/system $(1)/etc/config
+	$(INSTALL_BIN) ./files/etc/config/network $(1)/etc/config
+	$(INSTALL_BIN) ./files/etc/config/ubootenv $(1)/etc/config
 endef
 
 $(eval $(call BuildPackage,hue-factory-defaults))

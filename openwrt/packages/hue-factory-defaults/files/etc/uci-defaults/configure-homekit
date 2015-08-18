@@ -1,0 +1,35 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+IFACE=br-lan
+HOMEKIT_PIN=`fw_printenv -n homekit`
+HOMEKIT_STATE_DIR=/var/homekit
+HOMEKIT_PERSISTENT_DIR=/home/homekit/var
+HAP_PORT=8080
+
+abort() {
+	echo "error: $*" >&2
+	exit 1
+}
+
+configureMdns() {
+	uci batch <<EOF
+set hk_mdns.hk_mdns.netif=${IFACE}
+commit hk_mdns
+EOF
+	return $?
+}
+
+configureHap() {
+	uci batch <<EOF
+set hk_hap.hk_hap.device_password=${HOMEKIT_PIN}
+set hk_hap.hk_hap.mfi_pair_setup=1
+commit hk_hap
+EOF
+	return $?
+}
+
+configureMdns || abort "configureMdns"
+configureHap || abort "configureHap"
+
+exit 0

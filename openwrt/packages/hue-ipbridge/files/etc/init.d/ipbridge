@@ -15,26 +15,25 @@ SERVICE_PID_FILE=/var/run/ipbridge.pid
 HUE_IPBRIDGE=/usr/sbin/ipbridge
 HUE_IPBRIDGE_VAR=/var/hue-ipbridge
 HUE_IPBRIDGE_PERSISTENT=/home/ipbridge/var
-HUE_IPBRIDGE_RESETREASON=/home/ipbridge/resetreason
+HUE_IPBRIDGE_RESETREASON=/var/hue-ipbridge/resetreason
 GPIO_DIR=/sys/class/gpio
 HUE_IPBRIDGE_TTY=/dev/ttyUSB0
 ZIGBEE_UPDATER=/usr/sbin/zigbee_soc_updater
-ZIGBEE_UPDATE_FILE=/lib/firmware/ZigBeeBridge-HueV2-SAMR21_8001.sbl
-ZIGBEE_VERSION_FILE=/lib/firmware/version
+ZIGBEE_UPDATE_FILE=/lib/firmware/zigbee.sbl
+ZIGBEE_VERSION_FILE=/lib/firmware/zigbee.version
 # procd respawn settings
 # RESTART_TIMEOUT = time(seconds) before next respawn
 # FAIL_THRESHOLD = time(seconds) in which MAX_FAIL can be reached
 # MAX_FAIL = max number of respawns within FAIL_THRESHOLD.
 RESTART_TIMEOUT=10
 FAIL_THRESHOLD=3600
-MAX_FAIL=6
+MAX_FAIL=25
 
 formatArg() {
 	local OPTION=$1;shift
 	local VALUE=$1;shift
 	echo -n " ${OPTION} ${VALUE}"
 }
-
 
 setResetReason() {
 	local REASON=$1;shift
@@ -45,7 +44,7 @@ determineResetReason() {
 	local VALUE=`fw_printenv -n resetreason 2>/dev/null`
 	if [ -n "${VALUE}" ]; then
 		setResetReason ${VALUE}
-		fw_setenv ${KEY}
+		fw_setenv resetreason
 	else
 		setResetReason ${WATCHDOG_DETAILEDREASON_POWER_ON}
 	fi
@@ -54,7 +53,7 @@ determineResetReason() {
 formatArgFromUbootEnvVar() {
 	local OPTION=$1;shift
 	local KEY=$1;shift
-	local VALUE=`fw_printenv -n ${KEY}`
+	local VALUE=`fw_printenv -n ${KEY} 2>/dev/null`
 	if [ -n "${VALUE}" ]; then
 		echo -n " ${OPTION} ${VALUE}"
 	fi

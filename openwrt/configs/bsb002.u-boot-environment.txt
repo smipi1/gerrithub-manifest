@@ -12,13 +12,14 @@ serverip=192.168.1.10
 board=bsb002
 flash_uboot=tftp 0x80060000 ${board}/${board}_uboot.bin&&erase 0x9f000000 +$filesize&&cp.b $fileaddr 0x9f000000 $filesize
 flash_uboot_env=tftp 0x80060000 ${board}/${board}_uboot_environment.bin&&erase 0x9f040000 +$filesize&&cp.b $fileaddr 0x9f040000 $filesize
+flash_uboot_and_env=tftp 0x80060000 ${board}/${board}_uboot_and_environment.bin&&erase 0x9f000000 +$filesize&&cp.b $fileaddr 0x9f000000 $filesize
 flash_art=tftp 0x80060000 ${board}/${board}_art.bin&&erase 0x9f070000 +$filesize&&cp.b $fileaddr 0x9f070000 $filesize
 flash_kernel_0=tftp 0x80060000 ${board}/kernel.bin&&nand erase 0x0 0x400000&&nand write $fileaddr 0x0 $filesize
 flash_root_0=tftp 0x80060000 ${board}/root.bin&&nand erase 0x400000 0x2800000&&nand write $fileaddr 0x400000 $filesize
 flash_kernel_1=tftp 0x80060000 ${board}/kernel.bin&&nand erase 0x2C00000 0x400000&&nand write $fileaddr 0x2C00000 $filesize
 flash_root_1=tftp 0x80060000 ${board}/root.bin&&nand erase 0x3000000 0x2800000&&nand write $fileaddr 0x3000000 $filesize
 flash_overlay=tftp 0x80060000 ${board}/overlay.bin&&nand erase 0x5800000 0x2800000&&nand write $fileaddr 0x5800000 $filesize
-flash_factory=run flash_uboot&&run flash_uboot_env&&run flash_kernel_0&&run flash_root_0&&run flash_overlay
+flash_factory=run flash_uboot_and_env&&run flash_kernel_0&&run flash_root_0&&run flash_overlay
 # Boot configuration - common
 std_bootargs=board=BSB002 console=ttyS0,115200 ubi.mtd=overlay rootfs=/dev/mtdblock:rootfs rootfstype=squashfs noinitrd init=/sbin/init
 # Boot configuration - slot 0

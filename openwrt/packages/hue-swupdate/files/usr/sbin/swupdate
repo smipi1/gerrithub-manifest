@@ -337,7 +337,7 @@ startFirmwareUpdate() {
 		fi
 	fi
 	log "Waiting for the OTA file path: ${CMD_FIFO_PATH}"
-	while read OTA_FILE_PATH CONTAINER_OFFSET CONTAINER_SIZE <${CMD_FIFO_PATH}; do
+	while read OTA_FILE_PATH CONTAINER_OFFSET CONTAINER_SIZE OTA_COMMAND <${CMD_FIFO_PATH}; do
 		log "Processing OTA file: ${OTA_FILE_PATH}"
 		if [ -z "${CONTAINER_OFFSET}" ]; then
 			CONTAINER_OFFSET=0
@@ -349,6 +349,15 @@ startFirmwareUpdate() {
 			error "Failed updating software"
 		else
 			log "Software updated"
+		fi
+		# Copy resetreason if provided
+		if [ -f /var/hue-ipbridge/resetreason ]; then
+			local resetreason=`cat /var/hue-ipbridge/resetreason`
+			fw_setenv resetreason ${resetreason}
+		fi
+		
+		if [ "${OTA_COMMAND}" == "factoryreset" ]; then
+			factoryreset.sh
 		fi
 		reboot
 	done

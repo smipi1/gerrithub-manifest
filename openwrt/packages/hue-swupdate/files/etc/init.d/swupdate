@@ -19,7 +19,7 @@ CONTROL_FIFO=${VAR_DIR}/start
 # MAX_FAIL = max number of respawns within FAIL_THRESHOLD.
 RESTART_TIMEOUT=10
 FAIL_THRESHOLD=3600
-MAX_FAIL=6
+MAX_FAIL=25
 
 start_service() {
         mkdir -p ${VAR_DIR}

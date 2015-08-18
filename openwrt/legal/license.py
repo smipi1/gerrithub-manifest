@@ -1,11 +1,11 @@
 import os
 import shutil
 
-standardLicenses = { 'GPL-1'    : "standardLicenses/gpl-1.0.txt" 
-                   , 'GPL-2'    : "standardLicenses/gpl-2.0.txt" 
-                   , 'GPL-3'    : "standardLicenses/gpl-3.0.txt" 
-                   , 'LGPL-2.1' : "standardLicenses/lgpl-2.1.txt" 
-                   , 'LGPL-3'   : "standardLicenses/lgpl-3.0.txt"
+standardLicenses = { 'GPL-1'    : "specificLicenses/gpl-1.0.txt" 
+                   , 'GPL-2'    : "specificLicenses/gpl-2.0.txt" 
+                   , 'GPL-3'    : "specificLicenses/gpl-3.0.txt" 
+                   , 'LGPL-2.1' : "specificLicenses/lgpl-2.1.txt" 
+                   , 'LGPL-3'   : "specificLicenses/lgpl-3.0.txt"
                    }
 
 def licensePath(license):

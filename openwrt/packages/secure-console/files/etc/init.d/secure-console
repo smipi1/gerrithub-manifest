@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015 Philips Lighting BV
+
+START=11
+STOP=97
+
+syncShadowFileWithUbootString() {
+	/lib/functions/secure-console.sh
+}
+
+boot() {
+	syncShadowFileWithUbootString
+}

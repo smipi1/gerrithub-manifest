@@ -12,6 +12,7 @@ unset LIST_KEYS
 unset KEY_FILE_TO_REGISTER
 unset KEY_TO_DEREGISTER
 unset RESTORE_KEYS_FROM_UENV
+unset SKIP_FIREWALL_RELOAD
 
 help() {
 	echo "
@@ -27,6 +28,7 @@ Any one of the following FUNCTIONs can be specified:
 	                          '-' to read the public key from standard input.
 	-d KEY_TO_DEREGISTER      De-register (dont trust) the specified public key.
 	-a                        Automatically restore keys from the U-Boot environment.
+	-s                        Skip reloading the firewall settings.
 "
 }
 
@@ -139,8 +141,13 @@ deregisterKey() {
 	fi
 }
 
+haveAuthorizedKeysInUenv() {
+	fw_printenv -n authorized_keys >/dev/null 2>&1
+	return $?
+}
+
 restoreKeysFromUenv() {
-	if ! fw_printenv -n authorized_keys >/dev/null; then
+	if ! haveAuthorizedKeysInUenv; then
 		echo "warning: no keys to restore"
 		return 0
 	elif ! fw_printenv -n authorized_keys >${AUTH_KEYS_FILE}.new; then
@@ -150,6 +157,74 @@ restoreKeysFromUenv() {
 		mv ${AUTH_KEYS_FILE}.new ${AUTH_KEYS_FILE}
 		awk '/^ssh-rsa/{print "restored: " $3}' ${AUTH_KEYS_FILE}
 		return 0
+	fi
+}
+
+isFirewallRuleInstalled() {
+	uci get firewall.ssh -q >>/dev/null
+	return $?
+}
+
+uciAddSshRuleToFirewall() {
+	uci batch <<EOF
+set firewall.ssh=rule
+set firewall.ssh.name=Allow-SSH
+set firewall.ssh.src=lan
+set firewall.ssh.proto=tcp
+set firewall.ssh.dest_port=22
+set firewall.ssh.target=ACCEPT
+set firewall.ssh.family=ipv4
+commit firewall
+EOF
+	return $?
+}
+
+reloadFirewallRules() {
+	if [ "${SKIP_FIREWALL_RELOAD}" ]; then
+		return 0
+	else
+		fw3 -q reload
+		return $?
+	fi
+}
+
+installFirewallRules() {
+	if isFirewallRuleInstalled; then
+		echo "already installed: firewall rule for ssh"
+	elif ! uciAddSshRuleToFirewall; then
+		abort "cannot add firewall rule"
+	elif ! reloadFirewallRules; then
+		abort "cannot reload firewall rules"
+	else
+		echo "installed: firewall rule for ssh"
+	fi
+}
+
+uciDeleteSshRuleFromFirewall() {
+	uci batch <<EOF
+delete firewall.ssh
+commit firewall
+EOF
+	return $?
+}
+
+removeFirewallRules() {
+	if ! isFirewallRuleInstalled; then
+		echo "already removed: firewall rule for ssh"
+	elif ! uciDeleteSshRuleFromFirewall; then
+		abort "cannot remove firewall rule"
+	elif ! reloadFirewallRules; then
+		abort "cannot reload firewall rules"
+	else
+		echo "removed: firewall rule for ssh"
+	fi
+}
+
+syncFirewallRules() {
+	if haveAuthorizedKeysInUenv; then
+		installFirewallRules
+	else
+		removeFirewallRules
 	fi
 }
 
@@ -163,7 +238,7 @@ limitToSingleFunction() {
 }
 
 # Parse the command-line arguments
-while getopts ":hlr:d:a" OPT; do
+while getopts ":hlr:d:as" OPT; do
 	case "${OPT}" in
 		h)
 			limitToSingleFunction ${OPT}
@@ -185,6 +260,9 @@ while getopts ":hlr:d:a" OPT; do
 			limitToSingleFunction ${OPT}
 			RESTORE_KEYS_FROM_UENV=1
 			;;
+		s)
+			SKIP_FIREWALL_RELOAD=1
+			;;
 		:)
 			abortAndPrintHelp "Option -${OPTARG} requires an argument"
 			;;
@@ -203,13 +281,13 @@ elif [ -n "${LIST_KEYS}" ]; then
 	listKeys
 	exit $?
 elif [ -n "${KEY_FILE_TO_REGISTER}" ]; then
-	registerKeyFile ${KEY_FILE_TO_REGISTER}
+	registerKeyFile ${KEY_FILE_TO_REGISTER} && syncFirewallRules
 	exit $?
 elif [ -n "${KEY_TO_DEREGISTER}" ]; then
-	deregisterKey ${KEY_TO_DEREGISTER}
+	deregisterKey ${KEY_TO_DEREGISTER} && syncFirewallRules
 	exit $?
 elif [ -n "${RESTORE_KEYS_FROM_UENV}" ]; then
-	restoreKeysFromUenv
+	restoreKeysFromUenv && syncFirewallRules
 	exit $?
 fi
 

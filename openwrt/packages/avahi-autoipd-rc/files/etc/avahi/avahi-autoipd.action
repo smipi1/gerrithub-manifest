@@ -39,17 +39,15 @@ if [ -x /bin/ifconfig -o -x /sbin/ifconfig ] ; then
 
     # We have the old ifconfig tool
 
-    case "$1" in
+   case "$1" in
         BIND)
             ifconfig "$2" inet "$3" netmask 255.255.0.0 broadcast 169.254.255.255 up
             route add default dev "$2" metric "$METRIC" ||:
             ;;
-
-        CONFLICT|STOP|UNBIND)
+        CONFLICT|UNBIND|STOP)
             route del default dev "$2" metric "$METRIC" ||:
             ifconfig "$2" 0.0.0.0 up
             ;;
-
         *)
             echo "Unknown event $1" >&2
             exit 1
@@ -63,4 +61,4 @@ else
 
 fi
 
-exit 0 
+exit 0

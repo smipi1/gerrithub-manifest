@@ -7,9 +7,9 @@ PKG_RELEASE:=0.0
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
-IPBRIDGE_BUILD_TYPE:=release
+IPBRIDGE_BUILD?=release
 IPBRIDGE_BUILD_DIR:=$(abspath $(TOPDIR)/../../../bridge/build)
-IPBRIDGE_OUTPUT_DIR:=$(IPBRIDGE_BUILD_DIR)/linux_qualcomm_$(IPBRIDGE_BUILD_TYPE)
+IPBRIDGE_OUTPUT_DIR:=$(IPBRIDGE_BUILD_DIR)/linux_qualcomm_$(IPBRIDGE_BUILD)
 IPBRIDGE_APP:=$(IPBRIDGE_OUTPUT_DIR)/application/targets/ipbridge/ipbridge
 IPBRIDGE_IO_APP:=$(IPBRIDGE_OUTPUT_DIR)/application/targets/ipbridge_io/ipbridge_io
 IPBRIDGE_INSTALL_DIR:=/usr/sbin
@@ -34,7 +34,7 @@ define Package/hue-ipbridge
   SECTION:=utils
   CATEGORY:=Hue
   TITLE:=IP Bridge daemon
-  DEPENDS:=+libpthread +librt +libgpio +libuci +libubus +libubox +libblobmsg-json +libopenssl
+  DEPENDS:=+libpthread +librt +libgpio +libuci +libubus +libubox +libblobmsg-json +libopenssl +hk_lib +ipb_homekit_cae
 endef
 
 define Package/hue-ipbridge/description
@@ -50,7 +50,7 @@ define Build/Configure
 endef
 
 define Build/Compile
-	$(MAKE) -C $(IPBRIDGE_BUILD_DIR) linux_qualcomm_release
+	$(MAKE) -C $(IPBRIDGE_BUILD_DIR) linux_qualcomm_$(IPBRIDGE_BUILD)
 	awk -F '=' '/Version=/{print $$$$2}' $(ZIGBEE_FIRMWARE_RELEASE_INFO) >$(ZIGBEE_FIRMWARE_VERSION)
 endef
 
@@ -71,8 +71,8 @@ define Package/hue-ipbridge/install
 	$(INSTALL_DIR) $(1)/home/ipbridge/var
 	$(INSTALL_BIN) $(ZIGBEE_SOC_UPDATER_APP) $(1)$(IPBRIDGE_INSTALL_DIR)
 	$(INSTALL_DIR) $(1)/lib/firmware
-	$(CP) $(ZIGBEE_FIRMWARE_IMAGE) $(1)/lib/firmware/
-	$(CP) $(ZIGBEE_FIRMWARE_VERSION) $(1)/lib/firmware/
+	$(CP) $(ZIGBEE_FIRMWARE_IMAGE) $(1)/lib/firmware/zigbee.sbl
+	$(CP) $(ZIGBEE_FIRMWARE_VERSION) $(1)/lib/firmware/zigbee.version
 endef
 
 

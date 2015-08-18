@@ -29,6 +29,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1374287141" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
@@ -41,6 +42,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.2001715558" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
@@ -53,6 +55,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.874799631" languageId="org.eclipse.cdt.core.gcc" languageName="GNU C" sourceContentType="org.eclipse.cdt.core.cSource,org.eclipse.cdt.core.cHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
@@ -67,6 +70,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.516138070" languageId="org.eclipse.cdt.core.assembly" languageName="Assembly" sourceContentType="org.eclipse.cdt.core.asmSource" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
@@ -76,6 +80,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.10603864" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
@@ -85,6 +90,7 @@
 									<listOptionValue builtIn="false" value="notrace"/>
 									<listOptionValue builtIn="false" value="true=1"/>
 									<listOptionValue builtIn="false" value="false=0"/>
+									<listOptionValue builtIn="false" value="__linux__=1"/>
 								</option>
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.93823744" languageId="org.eclipse.cdt.core.gcc" languageName="GNU C" sourceContentType="org.eclipse.cdt.core.cSource,org.eclipse.cdt.core.cHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>

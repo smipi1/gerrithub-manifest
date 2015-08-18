@@ -25,7 +25,6 @@ for dir in dirs:
     f.write('                    , "<website>"\n')
     f.write('                    , "%s"\n' % (dir))
     f.write('                    , License ("<license>", "LICENSE")\n')
-    f.write('                    , None\n')
     f.write('                    , None )\n')
 
 f.write('           ]\n')

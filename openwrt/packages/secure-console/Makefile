@@ -36,9 +36,10 @@ define Package/secure-console/install
 	$(INSTALL_BIN) ./files/usr/sbin/ssh-factory-key $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/lib/functions
 	$(INSTALL_BIN) ./files/lib/functions/secure-console.sh $(1)/lib/functions
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/secure-console $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/31-secure-console $(1)/etc/uci-defaults
-	$(INSTALL_BIN) ./files/etc/uci-defaults/32-factory-keys $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/factory-keys $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/lib/preinit
 	$(INSTALL_BIN) ./files/lib/preinit/99_10_failsafe_login $(1)/lib/preinit
 endef

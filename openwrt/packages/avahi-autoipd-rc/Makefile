@@ -30,6 +30,8 @@ define Package/avahi-autoipd-rc/install
 	$(INSTALL_BIN) ./files/etc/init.d/avahi-autoipd $(1)/etc/init.d/
 	$(INSTALL_DIR) $(1)/etc/avahi
 	$(INSTALL_BIN) ./files/etc/avahi/avahi-autoipd.action $(1)/etc/avahi/
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_BIN) ./files/etc/udhcpc.user $(1)/etc/
 endef
 
 $(eval $(call BuildPackage,avahi-autoipd-rc))

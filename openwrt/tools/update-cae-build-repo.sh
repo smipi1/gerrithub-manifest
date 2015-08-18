@@ -19,6 +19,9 @@ ADDITIONAL_SRC_FILES="
 	bridge/tools/make_firmware_image/create_rsa_signature.py
 	bridge/tools/make_firmware_image/certs/RSA_dev_01.pem
 "
+TOUCHED_SRC_FILES="
+	zigbee/samr21/ZigBeeBridge-HueV2-SAMR21_8001.hex
+"
 
 cleanUp() {
 	rm -rf ${DEST_DIR}
@@ -116,6 +119,23 @@ copyFromSrcToDestSpecifiedPaths() {
 			return 1
 		elif ! cp -a ${SRC_DIR}/${FILE_PATH} ${DEST_DIR}/${FILE_PATH}; then
 			error "cannot copy file: ${SRC_DIR}/${FILE_PATH} -> ${DEST_DIR}/${FILE_PATH}"
+			return 1
+		fi
+	done
+}
+
+touchDestSpecifiedPaths() {
+	local DEST_DIR=$1;shift
+	local FILE_PATHS="$*";shift
+	local FILE_PATH
+	local FILE_DEST_DIR
+	for FILE_PATH in ${FILE_PATHS}; do
+		FILE_DEST_DIR=`dirname ${DEST_DIR}/${FILE_PATH}`
+		if ! mkdir -p ${FILE_DEST_DIR}; then
+			error "cannot create destination directory: ${FILE_DEST_DIR}"
+			return 1
+		elif ! touch ${DEST_DIR}/${FILE_PATH}; then
+			error "cannot touch file: ${DEST_DIR}/${FILE_PATH}"
 			return 1
 		fi
 	done
@@ -365,6 +385,8 @@ elif ! copyVersionedFilesInSrcToDest ${SRC_OPENWRT_DIR} ${DEST_OPENWRT_DIR}; the
 elif ! migrateIgnoresFromSrcToDest ${SRC_OPENWRT_DIR} ${DEST_OPENWRT_DIR}; then
 	abort "cannot migrate ignored files: ${SRC_OPENWRT_DIR} -> ${DEST_OPENWRT_DIR}"
 elif ! copyFromSrcToDestSpecifiedPaths ${SRC_DIR} ${DEST_DIR} ${ADDITIONAL_SRC_FILES}; then
+	abort "cannot copy additional files"
+elif ! touchDestSpecifiedPaths ${DEST_DIR} ${TOUCHED_SRC_FILES}; then
 	abort "cannot copy additional files"
 elif ! addIpBridgeMockedMakefile ${DEST_IPBRIDGE_MOCK_MAKEFILE}; then
 	abort "cannot add ipbridge mocked Makefile"

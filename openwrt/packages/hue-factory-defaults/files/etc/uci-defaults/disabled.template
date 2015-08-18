@@ -1,0 +1,2 @@
+#!/bin/sh
+exit 1  # It is important to fail so that the script is not removed via the overlay.
