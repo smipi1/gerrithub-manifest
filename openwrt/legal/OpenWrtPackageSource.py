@@ -7,24 +7,18 @@ class OpenWrtPackageSource(PackageSource):
     def __init__(self):
         pass
 
-    def copyTo(self, qsdkRoot, name, version, destPath):
+    def copyTo(self, args, name, version, packagePath, destPath):
         p = subprocess.Popen([ "git", "ls-tree", "-r", "HEAD", "--name-only" ],
-                             cwd=qsdkRoot,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        out, err = p.communicate()
+                             cwd=args.qsdkRootDir,
+                             stdout=subprocess.PIPE)
+        out = p.communicate()
         if p.returncode:
             raise Exception("git ls-tree failed: %s" % err)
         versionedFiles=out.strip().split("\n")
         if version:
-            versionString="-" + version
+            basename = name + "-" + version
         else:
-            versionString=""
-        p = subprocess.Popen([ "tar", "-czf", "%s/%s%s.tar.gz" % (os.path.abspath(destPath), name, versionString) ] + versionedFiles,
-                             cwd=qsdkRoot,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        if p.returncode:
-            raise Exception("tar -czf failed: %s" % err)
+            basename = name
+        
+        self.tar(os.path.join(getattr(args, self.rootAttribute), packageDir), destPath, name, version)
 

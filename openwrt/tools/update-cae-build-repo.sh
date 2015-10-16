@@ -23,6 +23,9 @@ TOUCHED_SRC_FILES="
 	zigbee/samr21/ZigBeeBridge-HueV2-SAMR21_8001.hex
 "
 
+# Include git and svn helpers
+. ${TOOLS_DIR}/git-svn-helpers.sh
+
 cleanUp() {
 	rm -rf ${DEST_DIR}
 }
@@ -193,165 +196,6 @@ copyInstalledOutOfPackageSources() {
 	fi 
 }
 
-getSvnRelativeUrl() {
-	local DIRECTORY=$1;shift
-	if ! cd ${DIRECTORY}; then
-		error "cannot cd to directory: ${DIRECTORY}"
-		return 1
-	elif ! svn info; then
-		error "cannot get svn info: ${DIRECTORY}"
-		return 1
-	fi | if ! awk -F ':' '/^Relative URL/{print $2}'; then
-		error "missing 'Relative URL' field: ${DIRECTORY}"
-		return 1
-	fi
-	return 0
-}
-
-svnRelativeUrlToGitBranchName() {
-	local RELATIVE_URL=$1
-	local SMARTBRIDGE_PATH=`echo ${RELATIVE_URL} | sed 's#\^/Products/SmartBridge/##g;s#/Software$##g'`
-	case ${SMARTBRIDGE_PATH} in
-	trunk)
-		echo "master"
-		;;
-	branches/*)
-		echo ${SMARTBRIDGE_PATH#*/}
-		;;
-	*)
-		error "unsupported path determining git branch name: ${SMARTBRIDGE_PATH}"
-		;;
-	esac
-}
-
-getVersionedDirectoryBranchName() {
-	local DIRECTORY=$1;shift
-	local RELATIVE_URL="`getSvnRelativeUrl ${DIRECTORY}`"
-	if [ "$?" -ne "0" ]; then
-		error "cannot determine svn relative URL: ${DIRECTORY}"
-		return 1
-	elif ! svnRelativeUrlToGitBranchName ${RELATIVE_URL}; then
-		error "cannot determine git branch name: ${RELATIVE_URL}"
-		return 1
-	else
-		return 0
-	fi
-}
-
-checkoutBranch() {
-	local SRC_DIR=$1;shift
-	local DEST_DIR=$1;shift
-	local GIT_BRANCH_NAME=`getVersionedDirectoryBranchName ${SRC_DIR}`
-	if [ "$?" -ne "0" ]; then
-		error "cannot determine git branch name: ${SRC_DIR}"
-		return 1
-	elif ! git init -q ${DEST_DIR}; then
-		error "cannot determine init git workspace: ${DEST_DIR}"
-		return 1
-	elif ! cd ${DEST_DIR}; then
-		error "cannot cd to destination directory: ${DEST_DIR}"
-		return 1
-	elif ! git remote add origin ${DEST_REPO}; then
-		error "cannot cd to destination directory: ${DEST_DIR}"
-		return 1
-	elif ! git ls-remote -q origin >/dev/null; then
-		error "cannot cd to destination directory: ${DEST_DIR}"
-		return 1
-	elif ! git fetch --depth 1 -q origin ${GIT_BRANCH_NAME}:${GIT_BRANCH_NAME} 2>/dev/null; then
-		if ! git checkout -b ${GIT_BRANCH_NAME}; then
-			error "cannot create branch: ${GIT_BRANCH_NAME}"
-			return 1
-		fi
-	elif ! git checkout -q ${GIT_BRANCH_NAME}; then
-		error "cannot checkout branch: ${GIT_BRANCH_NAME}"
-		return 1
-	fi
-	return 0
-}
-
-removeLeadingAndTrailingEmptyLines() {
-	sed -e :a -e '/./,$!d;/^\n*$/{$d;N;};/\n$/ba'
-	return $?
-}
-
-moveSvnCommitInfoToEnd() {
-	local COMMIT_INFO
-	local EMPTY_LINE
-	if ! read COMMIT_INFO; then
-		error "cannot read commit info"
-		return 1
-	elif ! read EMPTY_LINE; then
-		error "cannot read empty line"
-		return 1
-	elif [ -n "${EMPTY_LINE}" ]; then
-		error "commit info not followed by empty line"
-		return 1
-	elif ! removeLeadingAndTrailingEmptyLines; then
-		error "cannot print commit message content"
-		return 1
-	else
-		echo
-		echo "${COMMIT_INFO}"
-	fi
-}
-
-reformatSvnMessage() {
-	if ! egrep -v "^-+$"; then
-		error "cannot remove separators from commit message"
-		return 1
-	fi | if ! moveSvnCommitInfoToEnd; then
-		error "cannot move commit info to the end of the message"
-		return 1
-	else
-		return 0
-	fi
-}
-
-copyVersionedCommitMessage() {
-	local DIRECTORY=$1;shift
-	local DEST=$1;shift
-	if ! cd ${DIRECTORY}; then
-		error "cannot cd to directory: ${DIRECTORY}"
-		return 1
-	elif ! svn log -l 1; then
-		error "cannot get svn log: ${DIRECTORY}"
-		return 1
-	fi | if ! reformatSvnMessage; then
-		error "cannot reformat svn log message: ${DIRECTORY}"
-		return 1
-	fi >${DEST} 
-	return 0
-}
-
-emptyGitDirectory() {
-	local DIRECTORY=$1;shift
-	rm -rf ${DIRECTORY}/*
-	return $?
-}
-
-commitAndPushAllFiles() {
-	local DIRECTORY=$1;shift
-	local COMMIT_MESSAGE_FILE=$1;shift
-	if ! cd ${DIRECTORY}; then
-		error "cannot cd to directory: ${DIRECTORY}"
-		return 1
-	elif ! git add -A >/dev/null; then
-		error "cannot add all files: ${DIRECTORY}"
-		return 1
-	elif git diff-index HEAD --quiet; then
-		echo "nothing to commit and push: no changes: ${DIRECTORY}"
-		return 0
-	elif ! git commit -F ${COMMIT_MESSAGE_FILE}; then
-		error "cannot commit changes: ${DIRECTORY}"
-		return 1
-	elif ! git push origin HEAD; then
-		error "cannot push to origin: ${DIRECTORY}"
-		return 1
-	else
-		return 0
-	fi
-}
-
 addIpBridgeMockedMakefile() {
 	local DEST=$1;shift
 	local DEST_DIR=`dirname ${DEST}`
@@ -374,10 +218,8 @@ linux_qualcomm_release:
 EOF
 }
 
-if ! checkoutBranch ${SRC_DIR} ${DEST_DIR}; then
+if ! setupEmptyGitWorkspaceForSvnSrcDir ${SRC_DIR} ${DEST_DIR} ${DEST_REPO}; then
 	abort "cannot create temporary directory: ${DEST_DIR}"
-elif ! emptyGitDirectory ${DEST_DIR}; then
-	abort "cannot empty temporary directory: ${DEST_DIR}"
 elif ! copyVersionedCommitMessage ${SRC_DIR} ${COMMIT_MESSAGE_PATH}; then
 	abort "cannot copy commit message: ${COMMIT_MESSAGE_PATH}"
 elif ! copyVersionedFilesInSrcToDest ${SRC_OPENWRT_DIR} ${DEST_OPENWRT_DIR}; then
@@ -396,8 +238,10 @@ else
 	done
 fi
 
-if ! commitAndPushAllFiles ${DEST_DIR} ${COMMIT_MESSAGE_PATH}; then
-	abort "cannot commit all files: ${DEST_DIR}"
+TAG=`getRelease ${SRC_DIR}`
+
+if ! commitTagAndPushAllFiles ${DEST_DIR} ${COMMIT_MESSAGE_PATH} ${TAG}; then
+	abort "cannot commit, tag and push git workspace: ${DEST_DIR}"
 fi
 
 cleanUp

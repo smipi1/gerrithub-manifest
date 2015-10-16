@@ -88,12 +88,28 @@ QSDK_HOST_UBOOT_BUILD_DIR=$(QSDK_HOST_BUILD_DIR)/u-boot-*
 QSDK_HOST_BIN_DIR=$(QSDK_DIR)/staging_dir/host/bin
 qsdkConfigFile=configs/qsdk.$(1).config
 QSDK_CONFIG_FILE=$(call qsdkConfigFile,$(BUILD))
-QSDK_UBINIZE_INI=$(QSDK_DIR)/target/linux/$(QSDK_PLATFORM)/image/ubinize-root-$(product).ini
 QSDK_LAST_WRITTEN_LOG_FILE=`find $(QSDK_LOGS_DIR)/ -type f -printf '%T@ %p\n' | sort -n | tail -1 | awk '{print $$2}'`
 CAE_DIR=cae
 HOMEKIT_SOURCE_DEFINIONS=homekitSource.mk
 HOMEKIT_SOURCE_DIR=$(CAE_DIR)/homekit
-PACKAGE_SOURCES_DIR=$(RELEASE_DIR)/sources
+PACKAGE_SOURCES_BUILD_DIR=$(BUILD_DIR)/package-sources
+
+# Git built commit tracking
+GIT_DIR_qsdk=$(QSDK_DIR)
+GIT_DIR_uboot=$(QSDK_DIR)/qca/src/qca-legacy-uboot
+gitHead=$(shell cd $(GIT_DIR_$(1)) && git log -1 --pretty=format:%H)
+getLastBuiltCommit=$(shell cat $(QSDK_BIN_DIR)/$(1).built-commit 2>/dev/null)
+define updateLastBuiltCommit
+	@$(call printInColor,$(YELLOW),Built $(1)@$(call gitHead,$(1))) 
+	@echo $(call gitHead,$(1)) >$(QSDK_BIN_DIR)/$(1).built-commit
+endef
+define updateLastBuiltCommits
+	$(call updateLastBuiltCommit,qsdk)
+	$(call updateLastBuiltCommit,uboot)
+endef
+LAST_BUILT_QSDK_COMMIT=$(call getLastBuiltCommit,qsdk)
+LAST_BUILT_UBOOT_COMMIT=$(call getLastBuiltCommit,uboot)
+AFFECTED_QSDK_MAKE_TARGETS=$(TOOLS_DIR)/affectedQsdkMakeTargets.py
 
 ifndef TEST_LICENSES
 LICENSES_DEPS=qsdk.compile
@@ -122,7 +138,6 @@ endif
 FIRMWARE_TOOLS_DIR=$(FIRMWARE_DIR)/tools
 FIRMWARE_DEV_PRIKEY=$(FIRMWARE_TOOLS_DIR)/make_firmware_image/certs/RSA_dev_01.pem
 FIRMWARE_ZIGBEE_HEX_FILE=$(FIRMWARE_ZIGBEE_DIR)/$(zigbee_soc)/ZigBeeBridge-HueV2-SAMR21_8001.hex
-FIRMWARE_ZIGBEE_INFO_FILE=$(FIRMWARE_ZIGBEE_DIR)/$(zigbee_soc)/ZigBeeBridge-HueV2-SAMR21.releaseinfo
 FIRMWARE_KEY=$(basename $(notdir $(FIRMWARE_DEV_PRIKEY)))
 SYNC_CONFIGS=$(TOOLS_DIR)/syncConfigs.py
 CREATE_FIRMWARE=$(PYTHON) $(FIRMWARE_TOOLS_DIR)/make_firmware_image/create_fw2.py
@@ -140,6 +155,13 @@ PACKAGE_SYNC_COMMANDS= \
   sync \
   sync+restart
 PACKAGE_SYNC_CMD_TARGETS=$(foreach command,$(PACKAGE_SYNC_COMMANDS),package/%/$(command))
+
+PACKAGE_ARCHIVE_TOOL=./legal/update-package-source-repo.sh
+OPEN_SOURCE_COMPLIANCE_TOOL=./legal/openSourceCompliance.py \
+  --qsdk-root-dir $(QSDK_DIR) \
+  --target-build-root-dir $(QSDK_MIPS_BUILD_DIR) \
+  --target-file-dir-name ipkg-$(QSDK_PLATFORM) \
+  --dump-rootfs-listing-to $(LIST_OF_FILES_IN_ROOT)
 
 # git helpers	
 ASSERT_NO_UNCOMMITTED_FILES=[ -z "`$(GIT) ls-files --others`" ]
@@ -164,18 +186,19 @@ UNLOCK_IMAGES=$(foreach image,$(UNLOCK_IMAGE_TYPES),$(RELEASE_UNLOCK_DIR)/$(imag
 PRODUCT_SIDELOAD_TARGET=sideload/$(PRODUCT)
 UNLOCK_TARGETS=$(foreach image,$(UNLOCK_IMAGE_TYPES),unlock/$(image))
 
-# Relevant files in the QSDK build output
+# Relevant factory source files
 BIN_SOURCE_$(product)_uboot=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-$(product)-qca-legacy-uboot.bin
 BIN_SOURCE_$(product)_art=./images/$(product)/art.bin
 BIN_SOURCE_kernel=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-generic-uImage-lzma.bin
 BIN_SOURCE_root=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-generic-$(product)-root-squashfs.ubi
-BIN_SOURCE_overlay=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-generic-$(product)-overlay-jffs2.ubi
-SOURCE_ROOTFS_ARCHIVE=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-generic-$(PRODUCT)-rootfs.tar.gz
-RELEASE_UBOOT_AND_ENV_IMAGE=$(RELEASE_FACTORY_DIR)/$(product)/$(product)_uboot_and_environment.bin
-RELEASE_OVERLAY_IMAGE=$(RELEASE_FACTORY_DIR)/$(product)/overlay.bin
+BIN_SOURCE_overlay=$(QSDK_MIPS_BUILD_DIR)/hue-factory-defaults/factory-overlay.ubi
+BIN_SOURCE_uboot_and_environment=$(RELEASE_FACTORY_DIR)/$(product)/$(product)_uboot_and_environment.bin
+BIN_SOURCE_$(zigbee_soc)=$(FIRMWARE_ZIGBEE_DIR)/$(zigbee_soc)/ZigBeeBridge-HueV2-SAMR21_8001.hex
 
-# Relevant ZigBee SoC image files
-BIN_SOURCE_$(zigbee_soc)=$(FIRMWARE_ZIGBEE_HEX_FILE)
+# Relevant signing package source files
+SIGNING_SOURCE_root=$(QSDK_BIN_DIR)/openwrt-$(QSDK_PLATFORM)-generic-$(PRODUCT)-rootfs.tar.gz
+SIGNING_SOURCE_ubinize_ini=$(QSDK_DIR)/target/linux/$(QSDK_PLATFORM)/image/ubinize-root-$(product).ini
+SIGNING_SOURCE_zigbee_version=$(FIRMWARE_ZIGBEE_DIR)/$(zigbee_soc)/ZigBeeBridge-HueV2-SAMR21.releaseinfo
 
 define calcHex
 	$(shell printf "0x%X" $$(($(1))))
@@ -286,6 +309,7 @@ help:
 	@echo "	otauImage                     Generate the OTAU image in the '$(RELEASE_DIR)' directory."
 	@echo "	unlockImages                  Generate unlock images."
 	@echo "	licenses                      Generates open-source license information for the target."
+	@echo "	pushPackageSources            Pushes open-source package archives to github for open-source compliance."
 	@echo "	force                         Same as 'all', but forces a re-compile of the hue packages."
 	@echo "	clean                         Cleans the QSDK (Expect a complete rebuild on the next make all)."
 	@echo "	rmproper                      Deletes the QSDK (Expect a complete checkout and rebuild on the next make)."
@@ -442,7 +466,7 @@ $(MKENVIMAGE):
 force: qsdk.compile/purge $(foreach package,$(HUE_PACKAGES),package/$(package)/purge) all
 
 .SECONDEXPANSION:
-$(RELEASE_UBOOT_AND_ENV_IMAGE): $$(@D)/$(product)_uboot.bin $$(@D)/$(product)_uboot_environment.bin
+$(BIN_SOURCE_uboot_and_environment): $$(@D)/$(product)_uboot.bin $$(@D)/$(product)_uboot_environment.bin
 	$(call stepinfo)
 	@$(SREC_CAT) $(foreach bin,$^,$(bin) -binary -offset $(NOR_OFFSET_$(basename $(notdir $(bin)))) -fill 0xff $(NOR_OFFSET_$(basename $(notdir $(bin)))) $(NOR_END_$(basename $(notdir $(bin))))) -o $@ -binary
 
@@ -458,11 +482,10 @@ $(RELEASE_UBOOT_AND_ENV_IMAGE): $$(@D)/$(product)_uboot.bin $$(@D)/$(product)_ub
 # Copies an image bin or hex file to the release directory
 #   %.bin or %.hex is taken as the destination name
 #   BIN_SOURCE_% must be defined to specify the source path 
-.SECONDEXPANSION:
-%.bin %.hex: $$(BIN_SOURCE_$$(notdir $$*))
+%.bin %.hex: qsdk.compile
 	$(call stepinfo)
 	@$(MKDIR) -p $(dir $@)
-	@cp $< $@
+	@cp $(BIN_SOURCE_$(notdir $*)) $@
 
 # Generates an over-the-air update / side-loading image in the release directory
 .PHONY : otauImage
@@ -489,8 +512,22 @@ factoryImages: qsdk.compile $(RELEASE_FACTORY_DIR)/$(product)
 licenses: $(LICENSES_DEPS)
 	$(call stepinfo)
 	@$(MKDIR) -p $(dir $(LIST_OF_FILES_IN_ROOT))
-	@$(MKDIR) -p $(PACKAGE_SOURCES_DIR)
-	@./legal/licensing.py -o $(RELEASE_LICENSES_DIR) -q $(QSDK_DIR) -m $(RELEASE_LICENSES_DIR)/licenses.json -t $(QSDK_MIPS_BUILD_DIR) -i ipkg-$(QSDK_PLATFORM) -d $(LIST_OF_FILES_IN_ROOT) -s $(PACKAGE_SOURCES_DIR) $(call quietUnlessErrorsOrVerbose)
+	@$(OPEN_SOURCE_COMPLIANCE_TOOL) --licenses-dest-dir $(RELEASE_LICENSES_DIR) $(call quietUnlessErrorsOrVerbose)
+ 
+.PHONY : pushPackageSources
+pushPackageSources: $(LICENSES_DEPS)
+	$(call stepinfo)
+ifneq "$(BUILD)" "$(PRODUCT_BUILD)"
+	@echo "$@ not supported when BUILD=$(BUILD)" >&2
+	exit 1
+endif
+	@rm -rf $(PACKAGE_SOURCES_BUILD_DIR)
+	@$(MKDIR) $(PACKAGE_SOURCES_BUILD_DIR)
+	@$(PACKAGE_ARCHIVE_TOOL) -p $(PACKAGE_SOURCES_BUILD_DIR) # Prepare directory for git push
+	@$(OPEN_SOURCE_COMPLIANCE_TOOL) --package-source-dest-dir $(PACKAGE_SOURCES_BUILD_DIR) $(call quietUnlessErrorsOrVerbose)
+ifndef TEST_PACKAGE_SOURCE_GENERATION
+	@$(PACKAGE_ARCHIVE_TOOL) -c $(PACKAGE_SOURCES_BUILD_DIR) # Push package source changes and tag revision
+endif
 
 # Generates a zipped tar container with the kernel and rootfs 
 .SECONDEXPANSION:
@@ -502,13 +539,13 @@ $(OTAU_SIGN_PACKAGE): $(OTAU_BUILD_DIR)/kernel.bin $(RELEASE_DIR)
 	$(call assertBuildIs,$(PRODUCT_BUILD))
 	$(call stepinfo)
 	@$(CREATE_SIGN_PACKAGE) --kernel-image $< \
-	                        --root-archive $(SOURCE_ROOTFS_ARCHIVE) \
-	                        --ubinize-ini-file $(QSDK_UBINIZE_INI) \
+	                        --root-archive $(SIGNING_SOURCE_root) \
+	                        --ubinize-ini-file $(SIGNING_SOURCE_ubinize_ini) \
 	                        --host-staging-bin-dir $(QSDK_HOST_BIN_DIR) \
-	                        --bootloader-image-file-path $(RELEASE_UBOOT_AND_ENV_IMAGE)\
-	                        --overlay-image-file-path $(RELEASE_OVERLAY_IMAGE) \
-	                        --zigbee-soc-hex-file-path $(FIRMWARE_ZIGBEE_HEX_FILE) \
-	                        --zigbee-soc-info-file-path $(FIRMWARE_ZIGBEE_INFO_FILE) \
+	                        --bootloader-image-file-path $(BIN_SOURCE_uboot_and_environment)\
+	                        --overlay-image-file-path $(BIN_SOURCE_overlay) \
+	                        --zigbee-soc-hex-file-path $(BIN_SOURCE_$(zigbee_soc)) \
+	                        --zigbee-soc-info-file-path $(SIGNING_SOURCE_zigbee_version) \
 	                        --revision-file $(FIRMWARE_REVISION_FILE) \
 	                        --output-file-path $@ $(call quietUnlessErrorsOrVerbose)
 
@@ -641,10 +678,34 @@ qsdk.update-feeds: $(QSDK_CONFIG_FILE) qsdk.checkout homekit.checkout
 	$(call qsdkMake,package/symlinks) $(call quietUnlessErrorsOrVerbose)
 	$(call done)
 
+ifeq "$(LAST_BUILT_QSDK_COMMIT)" ""
+CHANGED_QSDK_BUILD_TARGETS:=target/linux
+else
+CHANGED_QSDK_BUILD_TARGETS:=
+endif
+
+ifneq "$(LAST_BUILT_UBOOT_COMMIT)" "$(call gitHead,uboot)"
+CHANGED_QSDK_BUILD_TARGETS+=package/qca-legacy-uboot
+endif
+
+changedQsdkBuildTargets=\
+  $(if $(LAST_BUILT_QSDK_COMMIT),$(shell $(AFFECTED_QSDK_MAKE_TARGETS) $(LAST_BUILT_QSDK_COMMIT)),target/linux) \
+  $(if $(LAST_BUILT_UBOOT_COMMIT),$(if $(filter-out $(LAST_BUILT_UBOOT_COMMIT),$(call gitHead,uboot)),package/qca-legacy-uboot),package/qca-legacy-uboot)
+
+define warnFileChangeAffecting
+	@$(call printInColor,$(YELLOW),Detected file changes affecting: $(1))
+endef
+
+.PHONY : qsdk.clean-changed-packages
+qsdk.clean-changed-packages:
+	$(call warnFileChangeAffecting,$(call changedQsdkBuildTargets))
+	$(call qsdkMake,$(foreach target,$(call changedQsdkBuildTargets),$(target)/clean),-) $(call quietUnlessErrorsOrVerbose)
+
 # Compile the QSDK
 .PHONY : qsdk.compile
-qsdk.compile: assert-build-requirements qsdk.update-download-cache qsdk.update-feeds qsdk/world qsdk.assert-download-cache-up-to-date
+qsdk.compile: assert-build-requirements qsdk.update-download-cache qsdk.update-feeds qsdk.clean-changed-packages qsdk/world qsdk.assert-download-cache-up-to-date
 	$(call stepinfo)
+	$(call updateLastBuiltCommits)
 
 define sideloadImage
 	$(call stepinfo)

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 SELF=`basename $0`
-QSDK_TOOLS_DIR=`dirname $0`
+QSDK_TOOLS_DIR=`dirname $(readlink -e $0)`
+TOOLS_DIR=`readlink -e ${QSDK_TOOLS_DIR}/../..`
 
 unset NEW_REMOTE_NAME
 unset NEW_REMOTE_ROOT
@@ -74,14 +75,14 @@ toDest() {
 
 defaultRemote() {
 	local SOURCE=$1;shift
-	${QSDK_TOOLS_DIR}/qsdk.py -f ${SOURCE} -d
+	${QSDK_TOOLS_DIR}/manifest.py -f ${SOURCE} -d
 	return $?
 }
 
 migrateManifest() {
 	local SOURCE=$1;shift
 	local DEST=$1;shift
-${QSDK_TOOLS_DIR}/qsdk.py -n ${NEW_REMOTE_NAME} -r ${NEW_REMOTE_ROOT} -e "${NEW_REMOTE_PREFIX}" -f ${SOURCE} -O ${DEST}
+${QSDK_TOOLS_DIR}/manifest.py -n ${NEW_REMOTE_NAME} -r ${NEW_REMOTE_ROOT} -e "${NEW_REMOTE_PREFIX}" -f ${SOURCE} -O ${DEST}
 	return $?
 }
 

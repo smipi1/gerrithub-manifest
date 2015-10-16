@@ -14,6 +14,8 @@ import glob
 import fnmatch
 import magic
 import pprint
+import subprocess
+import tempfile
 
 ownDir = os.path.dirname(os.path.realpath(__file__))
 
@@ -61,7 +63,7 @@ def createLicenseFiles(args, package, legalDir):
         if not os.path.isfile(source):
           exitWithError("License file not found: %s: %s" % (package.name, source))       
 
-    licenseFiles[source] = ( i, license.filePath(package, args.outputDir) )
+    licenseFiles[source] = ( i, license.filePath(package, args.licensesDestDir) )
     i = i + 1
     
   # print "Creating license file for: ", package.name
@@ -82,11 +84,13 @@ def createAllLicenseFiles(args, packagesOnTarget, legalDir):
   for package in packagesOnTarget:
     packageDetails = packagesOnTarget[package]
     if packageIsIgnored(packageDetails):
-      print 'skip license: %s (%s)' % (packageDetails.name, packageDetails.ignore)
+      if args.licensesDestDir:
+        print 'skip license: %s (%s)' % (packageDetails.name, packageDetails.ignore)
     else:
-      createLicenseFiles(args, packageDetails, legalDir)
       processedPackages.append(packageDetails)
-      print 'add license: %s' % (packageDetails.name)
+      if args.licensesDestDir:
+        print 'add license: %s' % (packageDetails.name)
+        createLicenseFiles(args, packageDetails, legalDir)
 
 def packagesToJson(aPackages, manifestFile):
   """transforms package List of Package to JSON"""
@@ -149,18 +153,12 @@ def toRelativePackagePath(packagePath, args):
 def toRelativeRootFilePath(filePath, args):
   return filePath.replace(args.targetBuildRootDir + "/root-ar71xx", "")
 
-def createOutputDirectory(args):
+def createCleanDir(dir):
   try:
-    shutil.rmtree(args.outputDir)
+    shutil.rmtree(dir)
   except Exception as e:
     print "Unable to delete directory: %s" % (e)
-  os.makedirs(args.outputDir)
-
-  try:
-    shutil.rmtree(args.sourceDestDir)
-  except Exception as e:
-    print "Unable to delete directory: %s" % (e)
-  os.makedirs(args.sourceDestDir)
+  os.makedirs(dir)
 
 def hashAvailableTargetFiles(args):
   ipkgDirectories = recursiveDirectorySearchInDirectory(args.targetBuildRootDir, args.targetFileDirName)
@@ -224,26 +222,20 @@ def checkLicensesForFilesOnTarget(args, filesOnTarget, availableTargetFiles):
   errors.sort()
   return errors, packagesOnTarget
 
-def copySourcesTo(args, packagesOnTarget, sourceDestDir):
+def copySourcesTo(args, packagesOnTarget):
   for package in packagesOnTarget:
     packageDetails = packagesOnTarget[package]
     if packageIsIgnored(packageDetails):
       print 'skip sources: %s (%s)' % (packageDetails.name, packageDetails.ignore)
     else:
-      packageDetails.packageSource.copyTo(args.qsdkRootDir, packageDetails.name, packageDetails.version, sourceDestDir)
+      packageDetails.packageSource.copyTo(args, packageDetails.name, packageDetails.version, packageDetails.packagePath, args.packageSourceDestDir)
       print 'add source: %s' % (packageDetails.name)
 
 #------------------------------------------------------------------------------------------------------------------------------
 
 def main():
     defaultOutputDir=os.path.join(ownDir,'..',"release","licenses.production")
-    parser = argparse.ArgumentParser(description='Hue OpenWRT license validation and generation')
-    parser.add_argument('-o', '--output-dir', dest='outputDir',
-                        default=defaultOutputDir,
-                        help='Directory where the output should be generated (defaults: %(default)s)')
-    parser.add_argument('-m', '--manifest-file', dest='manifestFile',
-                        default=os.path.join(defaultOutputDir, "licenses.json"),
-                        help='Directory where the output should be generated (defaults: %(default)s)')
+    parser = argparse.ArgumentParser(description='Hue OpenWRT open-source compliance tool')
     parser.add_argument('-q', '--qsdk-root-dir', dest='qsdkRootDir',
                         default=os.path.join("..", "qualcomm", "qsdk"),
                         help='QSDK OpenWRT root directory (defaults: %(default)s)')
@@ -256,12 +248,18 @@ def main():
     parser.add_argument('-d', '--dump-rootfs-listing-to', dest='rootfsListingFilepath',
                         type=argparse.FileType('w'),
                         help='Dump list of files found on rootfs to specified file')
-    parser.add_argument('-s', '--source-dest-dir', dest='sourceDestDir',
+    parser.add_argument('-l', '--licenses-dest-dir', dest='licensesDestDir',
                         default=None,
-                        help='Directory where the package source should be copied to (defaults: %(default)s)')
+                        help='Generate licensing information in the specified directory')
+    parser.add_argument('-s', '--package-source-dest-dir', dest='packageSourceDestDir',
+                        default=None,
+                        help='Generate package source archives in the specified directory')
+    
     args = parser.parse_args()
 
-    createOutputDirectory(args)
+    if args.licensesDestDir:
+        createCleanDir(args.licensesDestDir)
+        args.manifestFile = os.path.join(args.licensesDestDir, "licenses.json")
 
     availableTargetFiles = hashAvailableTargetFiles(args)
     filesOnTarget = hashFilesOnTarget(args)
@@ -280,11 +278,22 @@ def main():
       print "Please update: " + os.path.join(ownDir, "licenses.py")
       exitWithError("Inconsistent license information")
 
-    createAllLicenseFiles(args, packagesOnTarget, ownDir)
-    print packagesToJson(processedPackages, args.manifestFile)
+    if args.licensesDestDir:
+      createAllLicenseFiles(args, packagesOnTarget, ownDir)
+      print packagesToJson(processedPackages, args.manifestFile)
     
-    if args.sourceDestDir:
-        copySourcesTo(args, packagesOnTarget, args.sourceDestDir)
+    if args.packageSourceDestDir:
+        try:
+            args.preparedPackageRootDir = tempfile.mkdtemp("qca-prepared-package-sources")
+            make = [ "make", "target/prepare", "package/prepare", "BUILD_DIR=" + args.preparedPackageRootDir ]
+            p = subprocess.Popen(make, cwd=args.qsdkRootDir)
+            p.communicate()
+            if p.returncode:
+              shutil.rmtree(args.preparedPackageRootDir, ignore_errors=True)
+              raise Exception("error executing: " + " ".join(make))
+            copySourcesTo(args, packagesOnTarget)
+        finally:
+            shutil.rmtree(args.preparedPackageRootDir, ignore_errors=True)
     
     sys.exit(0)
 

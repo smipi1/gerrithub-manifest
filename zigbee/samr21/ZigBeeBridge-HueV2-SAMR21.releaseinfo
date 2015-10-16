@@ -1,8 +1,8 @@
 [ReleaseInfo]
-Version=6.9.2.15558
+Version=6.13.0.16193
 Build=ZigBeeBridge-HueV2-SAMR21
-BuildDate=20150720
+BuildDate=20150903
 BuiltBy=BuildCluster
 
 [md5sum]
-03e35e23f4161f58d0f6ead38909587d  ZigBeeBridge-HueV2-SAMR21_8001.sbl
+46b7f5ce44c31fc27bd217d8ad118dad  ZigBeeBridge-HueV2-SAMR21_8001.sbl

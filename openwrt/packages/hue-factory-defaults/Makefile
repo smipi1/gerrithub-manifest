@@ -26,12 +26,24 @@ define Build/Prepare
 	echo "do_nothing:" > $(PKG_BUILD_DIR)/Makefile
 endef
 
+define Build/Compile
+	cd ./src && $(STAGING_DIR_HOST)/bin/ubinize -o $(PKG_BUILD_DIR)/factory-overlay.ubi -p 128KiB -m 2048 ubinize-overlay.ini
+endef
+
 define Package/hue-factory-defaults/install
+	$(INSTALL_DIR) $(1)/lib/functions
+	$(INSTALL_BIN) ./files/lib/functions/mtd.sh $(1)/lib/functions/
+	$(INSTALL_DIR) $(1)/lib/preinit
+	$(INSTALL_BIN) ./files/lib/preinit/75_factory_reset $(1)/lib/preinit/
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/etc/uci-defaults/update-factory-reset-counter $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/etc/uci-defaults/configure-homekit $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/hbpl-695_ula_prefix $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/remove_link_local_and_default_routes $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_BIN) ./files/etc/config/firewall $(1)/etc/config
+	$(INSTALL_DIR) $(1)/lib/images
+	$(CP) $(PKG_BUILD_DIR)/factory-overlay.ubi $(1)/lib/images/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/factoryreset $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/sbin

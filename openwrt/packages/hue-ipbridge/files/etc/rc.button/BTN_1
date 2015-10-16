@@ -8,6 +8,7 @@ fi
 BUTTONPIPE=/var/hue-ipbridge/button_in
 if [ "$ACTION" == "released" ]; then
   if [ "$SEEN" -gt "0" ]; then
+    sleep 5
     factoryreset.sh
   fi
 fi

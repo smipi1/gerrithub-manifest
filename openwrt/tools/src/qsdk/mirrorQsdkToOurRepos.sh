@@ -1,7 +1,8 @@
 #!/bin/bash
 
 SELF=`basename $0`
-QSDK_TOOLS_DIR=`dirname $0`
+QSDK_TOOLS_DIR=`dirname $(readlink -e $0)`
+TOOLS_DIR=`readlink -e ${QSDK_TOOLS_DIR}/../..`
 QSDK_ROOT=`pwd`
 
 C_NONE="\033[0m"
@@ -155,15 +156,70 @@ done
 [ -z "${OUR_REMOTE_NAME}" ] && abortShowHelp "Missing mandatory option: -n"
 [ -z "${OUR_REMOTE_ROOT}" ] && abortShowHelp "Missing mandatory option: -r"
 
-${QSDK_TOOLS_DIR}/qsdk.py -n ${OUR_REMOTE_NAME} -r ${OUR_REMOTE_ROOT} -e "${OUR_REMOTE_PREFIX}" -l | while read PROJECT_PATH THEIR_REMOTE_NAME OUR_REMOTE_REPO; do
-	ABS_PROJECT_PATH=${QSDK_ROOT}/${PROJECT_PATH}
-	log "========================================"
-	log "Project: ${PROJECT_PATH}"
-	log "----------------------------------------"
-	cd ${ABS_PROJECT_PATH} || abort "cannot cd to ${ABS_PROJECT_PATH}"
-	isValidGitProject || abort "not a valid git project: ${ABS_PROJECT_PATH}"
-	pullAndPushAllTheirBranchesAndTagsToOurRemote ${THEIR_REMOTE_NAME} ${OUR_REMOTE_NAME} ${OUR_REMOTE_REPO}
-done
+listManifest() {
+	${QSDK_TOOLS_DIR}/manifest.py -n ${OUR_REMOTE_NAME} -r ${OUR_REMOTE_ROOT} -e "${OUR_REMOTE_PREFIX}" -l
+}
+
+missingRepos() {
+	local PROJECT_PATH
+	local THEIR_REMOTE_NAME
+	local OUR_REMOTE_REPO
+	listManifest | while read PROJECT_PATH THEIR_REMOTE_NAME OUR_REMOTE_REPO; do
+		if ! git ls-remote ${OUR_REMOTE_REPO} 1>/dev/null 2>&1; then
+			echo ${OUR_REMOTE_REPO}
+		fi
+	done
+}
+
+continueIfYesAbortIfNo() {
+	local MESSAGE="$*"
+	local CHOICE
+	while read -n 1 -p "${MESSAGE}" CHOICE; do
+		echo
+		case "${CHOICE}" in
+		[nN])
+			abort "cannot continue"
+			;;
+		[yY])
+			return 0
+			;;
+		*)
+			error "invalid option: ${CHOICE}"
+			;;
+		esac
+	done
+}
+
+retryUntilDestinationReposReachable() {
+	local m
+	local MISSING_REPOS=`missingRepos`
+	while [ -n "${MISSING_REPOS}" ]; do
+		for m in ${MISSING_REPOS}; do
+			error "cannot reach: ${m}"
+		done
+		echo "Please resolve connectivity issues or create the missing repositories."
+		continueIfYesAbortIfNo "Do you wish to retry? (y/n) "
+		MISSING_REPOS=`missingRepos`
+	done
+}
+
+mirrorGitRepos() {
+	local PROJECT_PATH
+	local THEIR_REMOTE_NAME
+	local OUR_REMOTE_REPO
+	listManifest | while read PROJECT_PATH THEIR_REMOTE_NAME OUR_REMOTE_REPO; do
+		ABS_PROJECT_PATH=${QSDK_ROOT}/${PROJECT_PATH}
+		log "========================================"
+		log "Project: ${PROJECT_PATH}"
+		log "----------------------------------------"
+		cd ${ABS_PROJECT_PATH} || abort "cannot cd to ${ABS_PROJECT_PATH}"
+		isValidGitProject || abort "not a valid git project: ${ABS_PROJECT_PATH}"
+		pullAndPushAllTheirBranchesAndTagsToOurRemote ${THEIR_REMOTE_NAME} ${OUR_REMOTE_NAME} ${OUR_REMOTE_REPO}
+	done
+}
+
+retryUntilDestinationReposReachable
+mirrorGitRepos
 
 exit $?
 

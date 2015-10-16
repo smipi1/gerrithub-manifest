@@ -31,6 +31,15 @@
 	</natures>
 	<filteredResources>
 		<filter>
+			<id>1443182042074</id>
+			<name>build_dir</name>
+			<type>30</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-*</arguments>
+			</matcher>
+		</filter>
+		<filter>
 			<id>1428657068448</id>
 			<name>qualcomm/qsdk/bin</name>
 			<type>30</type>

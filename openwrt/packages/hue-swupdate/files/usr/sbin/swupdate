@@ -1,11 +1,12 @@
 #!/bin/sh
 # Copyright (C) 2015 Philips Lighting BV
+SELF=`basename $0`
 
 # Includes
 . /lib/functions/certs.sh
+. /lib/functions/mtd.sh
 
 # Constants
-SELF=`basename $0`
 TMP_DIR=/tmp/${SELF}.$$
 KERNEL_FILE=kernel.bin
 ROOT_FILE=root.bin
@@ -61,44 +62,10 @@ The following OPTIONS are available:
 "
 }
 
-log() {
-	echo "$*"
-	logger -p daemon.notice -t ${SELF} "$*"
-}
-
-error() {
-	echo "error: $*" >&2
-	logger -p daemon.error -t ${SELF} "$*"
-}
-
-abort() {
-	error "$*"
-	exit 1
-}
-
-pipeToLog() {
-	local LINE
-	while read LINE; do
-		log "${LINE}"
-	done
-}
-
 abortAndPrintHelp() {
 	error "$*"
 	help >&2
 	exit 1
-}
-
-nameToMtdDevice() {
-	local PARTITION_NAME=$1
-	awk '
-		BEGIN {
-			FS=":"
-		}
-		/^mtd[0-9]+:[ \t]+([0-9a-f]{8}[ \t]){2}"'${PARTITION_NAME}'"/ {
-			print $1
-		}
-	' /proc/mtd
 }
 
 getUbootEnvVar() {
@@ -134,77 +101,6 @@ switchBootslot() {
 	fi
 }
 
-isNandDevice() {
-	local DEV_TYPE=`cat /sys/class/mtd/$1/type`
-	if [ "${DEV_TYPE}" != "nor" ]; then
-		return 0
-	else
-		return 1
-	fi
-}
-
-eraseNand() {
-	local DEVICE=$1
-	log "Erasing ${DEVICE} (NAND)"
-	if ! flash_eraseall -q /dev/${DEVICE} 2>&1; then
-		return 1
-	else
-		return 0
-	fi | pipeToLog
-}
-
-eraseNor() {
-	local DEVICE=$1
-	log "Erasing ${DEVICE} (NOR)"
-	if ! mtd erase ${DEVICE} 2>&1; then
-		return 1
-	else
-		return 0
-	fi | pipeToLog
-}
-
-eraseMtd() {
-	local DEVICE=$1
-	if isNandDevice ${DEVICE}; then
-		eraseNand ${DEVICE}
-		return $?
-	else
-		eraseNor ${DEVICE}
-		return $?
-	fi
-}
-
-writeNand() {
-	local DEVICE=$1
-	log "Writing ${DEVICE} (NAND)"
-	if ! nandwrite -p /dev/${DEVICE} - 2>&1; then
-		return 1
-	else
-		return 0
-	fi | pipeToLog
-}
-
-writeNor() {
-	local DEVICE=$1
-	log "Writing ${DEVICE} (NOR)"
-	if ! mtd write - ${DEVICE} 2>&1; then
-		return 1
-	else
-		return 0
-	fi | pipeToLog
-}
-
-writeMtd() {
-	local DEVICE=$1
-	log "Writing unused boot-slot"
-	if isNandDevice ${DEVICE}; then
-		writeNand ${DEVICE}
-		return $?
-	else
-		writeNor ${DEVICE}
-		return $?
-	fi
-}
 
 eraseNextMtds() {
 	log "Erasing unused boot-slot"
@@ -217,19 +113,32 @@ eraseNextMtds() {
 	fi
 }
 
-extractContainer() {
-	local OTA_FILE_PATH=$1;shift
+catBytes() {
+	local NO_BYTES=$1;shift
+	if [ "${NO_BYTES}" -eq "0" ]; then
+		return 0
+	else
+		dd bs=${NO_BYTES} count=1
+		return $?
+	fi
+}
+
+cropContainer() {
 	local CONTAINER_OFFSET=$1;shift
 	local CONTAINER_SIZE=$1;shift
-	local DD_ARGS=""
+	if ! catBytes "${CONTAINER_OFFSET}" >/dev/null; then
+		error "Cannot seek to ${CONTAINER_OFFSET}"
+		return 1
+	fi
 	if [ "${CONTAINER_SIZE}" -ne "0" ]; then
-		DD_ARGS="count=${CONTAINER_SIZE} ${args}"
+		if ! catBytes "${CONTAINER_SIZE}"; then
+			error "Cannot crop to ${CONTAINER_SIZE} bytes"
+			return 1
+		fi
+	else
+		cat
 	fi
-	if [ "${CONTAINER_OFFSET}" -ne "0" ]; then
-		DD_ARGS="skip=${CONTAINER_OFFSET} ${args}"
-	fi
-	dd if=${OTA_FILE_PATH} bs=1 ${DD_ARGS}
-	return $?
+	return 0
 }
 
 decryptContainer() {
@@ -242,8 +151,8 @@ extractRootAndKernelImages() {
 	local CONTAINER_OFFSET=$1;shift
 	local CONTAINER_SIZE=$1;shift
 	local DEST_DIR=$1;shift
-	if ! extractContainer ${OTA_FILE_PATH} ${CONTAINER_OFFSET} ${CONTAINER_SIZE}; then
-		error "Cannot extract container"
+	if ! cropContainer ${CONTAINER_OFFSET} ${CONTAINER_SIZE} <${OTA_FILE_PATH}; then
+		error "Cannot crop container"
 		return 1
 	fi | if ! decryptContainer; then
 		error "Cannot decrypt container"

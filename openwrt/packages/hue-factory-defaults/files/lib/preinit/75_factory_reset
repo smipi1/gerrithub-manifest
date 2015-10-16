@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright (C) 2015 Philips Lighting
+
+do_reset_factory() {
+	factoryreset.sh
+}
+
+isFactoryResetInProgress() {
+	local resetting_to_factory=`fw_printenv -n resetting_to_factory 2>/dev/null`
+	[ "${resetting_to_factory}" = "1" ]
+	return $?
+}
+
+isFactoryResetInProgress && boot_hook_add preinit_essential do_reset_factory

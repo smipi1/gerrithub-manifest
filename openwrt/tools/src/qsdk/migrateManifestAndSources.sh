@@ -1,7 +1,8 @@
 #!/bin/bash
 
 SELF=`basename $0`
-QSDK_TOOLS_DIR=`dirname $0`
+QSDK_TOOLS_DIR=`dirname $(readlink -e $0)`
+TOOLS_DIR=`readlink -e ${QSDK_TOOLS_DIR}/../..`
 QSDK_ROOT=`pwd`
 
 C_NONE="\033[0m"
@@ -96,10 +97,10 @@ rm -rf ${OUR_MANIFEST_PROJECT}
 git clone ${OUR_MANIFEST_REPO} ${OUR_MANIFEST_PROJECT} || abort "cannot clone our manifest project: ${OUR_MANIFEST_REPO} -> ${OUR_MANIFEST_PROJECT}"
 
 log "create a manifest for our repos: ${OUR_MANIFEST_PROJECT}/${OUR_MANIFEST_FILE}"
-${QSDK_TOOLS_DIR}/qsdk.py -n ${OUR_REMOTE_REPO_NAME} -r ${OUR_REMOTE_REPO_ROOT} -e ${OUR_REMOTE_PREFIX} -O ${OUR_MANIFEST_PROJECT}/${OUR_MANIFEST_FILE} || abort "cannot create a manifest for our repos"
+${QSDK_TOOLS_DIR}/manifest.py -n ${OUR_REMOTE_REPO_NAME} -r ${OUR_REMOTE_REPO_ROOT} -e ${OUR_REMOTE_PREFIX} -O ${OUR_MANIFEST_PROJECT}/${OUR_MANIFEST_FILE} || abort "cannot create a manifest for our repos"
 
 log "create a pruned manifest for our repos: ${OUR_MANIFEST_PROJECT}/${OUR_PRUNED_MANIFEST_FILE}"
-${QSDK_TOOLS_DIR}/qsdk.py -n ${OUR_REMOTE_REPO_NAME} -r ${OUR_REMOTE_REPO_ROOT} -e ${OUR_REMOTE_PREFIX} -O ${OUR_MANIFEST_PROJECT}/${OUR_PRUNED_MANIFEST_FILE} -u "${THEIR_PROJECTS_TO_PRUNE}" || abort "cannot create a pruned manifest for our repos"
+${QSDK_TOOLS_DIR}/manifest.py -n ${OUR_REMOTE_REPO_NAME} -r ${OUR_REMOTE_REPO_ROOT} -e ${OUR_REMOTE_PREFIX} -O ${OUR_MANIFEST_PROJECT}/${OUR_PRUNED_MANIFEST_FILE} -u "${THEIR_PROJECTS_TO_PRUNE}" || abort "cannot create a pruned manifest for our repos"
 
 log "mirroring all QSDK branches and tags to our repos"
 ${QSDK_TOOLS_DIR}/mirrorQsdkToOurRepos.sh ${MIRROR_ARGS} -n ${OUR_REMOTE_REPO_NAME} -r ${OUR_REMOTE_REPO_ROOT} -e "${OUR_REMOTE_PREFIX}" || abort "cannot mirror all qsdk repos"

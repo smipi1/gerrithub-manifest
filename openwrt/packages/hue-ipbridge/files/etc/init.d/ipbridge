@@ -90,6 +90,8 @@ getArgumentsFromUbootEnvironment() {
 	formatArgFromUbootEnvVar -c ctn
 	formatArgFromUbootEnvVar -i cid
 	formatArgFromUbootEnvVar -r frcnt
+	formatArgFromUbootEnvVar -o open_tst_if
+	formatArgFromUbootEnvVar -f fohlocking
 }
 
 start_service() {

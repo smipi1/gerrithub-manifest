@@ -23,7 +23,7 @@ define Package/hue-swupdate
   SECTION:=utils
   CATEGORY:=Hue
   TITLE:=Software Update daemon
-  DEPENDS:=+hue-ipbridge
+  DEPENDS:=+hue-factory-defaults
 endef
 
 define Package/hue-swupdate/description
